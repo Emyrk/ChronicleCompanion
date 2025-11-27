@@ -7,3 +7,5 @@
 ## SavedVariablesPerCharacter: 
 
 core.lua
+debug.lua
+slash.lua
