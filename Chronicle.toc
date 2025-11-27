@@ -4,6 +4,6 @@
 ## Version: 0.1
 ## DefaultState: enabled
 ## Author: Emyrk
-## SavedVariablesPerCharacter: 
+## SavedVariablesPerCharacter: ChronicleDB
 
 core.lua
