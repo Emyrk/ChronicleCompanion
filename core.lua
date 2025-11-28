@@ -65,18 +65,18 @@ end
 ---@param guid string
 ---@param auraFunction function(string, number): (string, number, number)
 ---@return string
-local function unitAuras(guid, auraFunction)
-	local auras = ""
-	local prefix = ","
-	for i=0, 31 do
-		local buffTexture, buffApplications, buffID = auraFunction("player", i)
-		if not buffTexture then
-			return auras
-		end
-		auras = auras .. string.format("%s%d=%d", prefix, buffID,buffApplications)
-		prefix = ","
-	end
-	return auras
+function unitAuras(guid, auraFunction)
+    local auras = ""
+    local prefix = ","
+    for i=1, 31 do
+        local buffTexture, buffApplications, buffID = auraFunction(guid, i)
+        if not buffTexture then
+            return auras
+        end
+        auras = auras .. string.format("%s%d=%d", prefix, buffID,buffApplications)
+        prefix = ","
+    end
+    return auras
 end
 
 -- Add or update a unit in the database
