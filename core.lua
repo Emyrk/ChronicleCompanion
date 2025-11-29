@@ -178,7 +178,7 @@ function Chronicle:RAW_COMBATLOG()
 		self:UpdateUnit(guids[i])
 	end
 
-	local hasYou = string.lower(log).match(" [yY]ou(['.\\sr])")
+	local hasYou = string.match(log, " [yY]ou(['.\\sr])")
 	if hasYou then
 		local ok, playerGuid = UnitExists("player")
 		if ok then
