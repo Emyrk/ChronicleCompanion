@@ -172,9 +172,17 @@ function Chronicle:RAW_COMBATLOG()
 	local log = arg2
 
 	-- local input = "Mob died: 0x000000000000ABCD killed by 0x0000000000001234"
-	local guids = FindHexGUIDs(arg2)
+	local guids = FindHexGUIDs(log)
 	for i = 1, table.getn(guids) do
 		self:UpdateUnit(guids[i])
+	end
+
+	local hasYou = string.lower(log):match(" [yY]ou(['.\\sr])")
+	if hasYou then
+		local ok, playerGuid = UnitExists("player")
+		if ok then
+			self:UpdateUnit(playerGuid)
+		end
 	end
 end
 
