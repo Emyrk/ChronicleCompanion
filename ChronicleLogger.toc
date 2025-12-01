@@ -1,5 +1,5 @@
 ## Interface: 10900
-## Title: Chronicle
+## Title: ChronicleLogger
 ## Notes: Use with the log parsing website Chronicle
 ## Version: 0.1
 ## DefaultState: enabled
