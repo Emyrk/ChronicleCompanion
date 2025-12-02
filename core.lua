@@ -161,6 +161,7 @@ function Chronicle:CreateEventFrame()
 	-- Register events
 	self.eventFrame:RegisterEvent("ADDON_LOADED")
 	self.eventFrame:RegisterEvent("RAW_COMBATLOG")
+	self.eventFrame:RegisterEvent("PLAYER_LOGIN")
 	-- self.eventFrame:RegisterEvent("PLAYER_LOGIN")
 	-- self.eventFrame:RegisterEvent("PLAYER_LOGOUT")
 	
@@ -252,6 +253,11 @@ function Chronicle:OnEvent(event, ...)
 		self:OnPlayerEnteringWorld()
 	elseif event == "RAW_COMBATLOG" then
 		self:RAW_COMBATLOG()
+	elseif event == "PLAYER_LOGIN" then
+		local pgid, ok = UnitExists(guid.."owner")
+		local loginMessage = "PLAYER_LOGIN: " .. UnitName("player") .. "&" .. tostring(ok and pgid or "nil")
+		CombatLogAdd(loginMessage, 1)
+		CombatLogAdd(loginMessage)
 	end
 end
 
