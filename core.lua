@@ -239,7 +239,7 @@ end
 function Chronicle:OnEvent(event, ...)
 	if event == "ADDON_LOADED" then
 		local addonName = arg1
-		if addonName == "Chronicle" then
+		if addonName == "ChronicleLogger" then
 			self:InitDB()
 			self:Print("Chronicle v" .. self.version .. " loaded. Type /chronicle help for commands.")
 		end
@@ -252,7 +252,7 @@ end
 
 function Chronicle:ADDON_LOADED()
 	local addonName = arg1
-	if addonName ~= "Chronicle" then
+	if addonName ~= "ChronicleLogger" then
 		return
 	end
 
