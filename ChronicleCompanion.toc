@@ -1,10 +1,11 @@
 ## Interface: 10900
-## Title: ChronicleLogger
-## Notes: Use with the log parsing website Chronicle
+## Title: ChronicleCompanion
+## Notes: Use with the website Chronicle
 ## Version: 0.1
 ## DefaultState: enabled
 ## Author: Emyrk
 ## SavedVariablesPerCharacter: 
+## Dependencies: SuperWowCombatLogger
 
 core.lua
 debug.lua

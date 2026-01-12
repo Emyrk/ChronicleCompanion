@@ -2,20 +2,6 @@
 -- Chronicle Addon for Turtle WoW
 -- =============================================================================
 
--- Check for SuperWoW requirement
-if not SetAutoloot then
-	StaticPopupDialogs["NO_SUPERWOW_CHRONICLE"] = {
-		text = "|cffffff00Chronicle|r requires SuperWoW to operate.",
-		button1 = TEXT(OKAY),
-		timeout = 0,
-		whileDead = 1,
-		hideOnEscape = 1,
-		showAlert = 1,
-	}
-	StaticPopup_Show("NO_SUPERWOW_CHRONICLE")
-	return
-end
-
 
 -- =============================================================================
 -- Chronicle Namespace
@@ -24,6 +10,8 @@ end
 ---@class Chronicle
 ---@field version string
 ---@field db ChronicleDB
+---@field superWoW boolean
+---@field superWoWLogger boolean
 Chronicle = {}
 Chronicle.version = "0.1"
 
@@ -42,6 +30,25 @@ Chronicle.version = "0.1"
 ---@field last_seen number timestamp of last seen
 ---@field canCooperate boolean whether unit can cooperate
 ---@field logged number timestamp of last logged
+---@field level number unit level
+
+function Chronicle:Init()
+	self:InitDeps()
+	self:InitDB()
+end
+
+function Chronicle:InitDeps()
+	-- Check for SuperWoW requirement
+	if not SetAutoloot then
+		self.superWoW = false
+	end
+
+	if not log_combatant_info then
+		self.superWoWLogger = false
+	end
+
+	-- TODO: Add some UI alerts if deps are missing
+end
 
 -- Initialize the database
 function Chronicle:InitDB()
@@ -64,9 +71,22 @@ function Chronicle:InitDB()
 	self.logging = logging
 end
 
+function Chronicle:IsLevelOneLunatic() 
+ for tab = 1, GetNumSpellTabs() do
+    local _, _, offset, numSpells = GetSpellTabInfo(tab)
+    for i = 1, numSpells do
+      local name = GetSpellName(offset + i, "spell")
+      if name and name == "Level One Lunatic" then
+        return true
+      end
+    end
+  end
+	return false
+end
+
 ---@param guid string
 ---@return string
-function unitBuffs(guid, auraFunction)
+function Chronicle:unitBuffs(guid)
 	local auras = ""
 	local prefix = ","
 	for i=1, 31 do
@@ -96,8 +116,9 @@ function Chronicle:UpdateUnit(guid)
 	unitData.last_seen = time()
 	unitData.canCooperate = UnitCanCooperate("player", guid)
 	unitData.logged = time()
+	unitData.level = UnitLevel(guid)
 	-- No need to cache this info.
-	local buffs = unitBuffs(guid)
+	local buffs = Chronicle:unitBuffs(guid)
 
 	-- Check for owner unit
 	local ok, ownerGuid = UnitExists(guid.."owner")
@@ -108,14 +129,15 @@ function Chronicle:UpdateUnit(guid)
 
 	self.db.units[guid] = unitData
 
-	local logLine = string.format("UNIT_INFO: %s&%s&%s&%s&%s&%s&%s",
+	local logLine = string.format("UNIT_INFO: %s&%s&%s&%s&%s&%s&%s%s",
 		date("%d.%m.%y %H:%M:%S"),
 		unitData.guid,
 		UnitIsPlayer(unitData.guid) and "1" or "0",
 		unitData.name,
 		unitData.canCooperate and "1" or "0",
 		unitData.owner or "",
-		buffs or ""
+		buffs or "",
+		unitData.level or "0"
 	)
 	CombatLogAdd(logLine, 1)
 	Chronicle:CleanupOldUnits()
@@ -246,7 +268,7 @@ function Chronicle:OnEvent(event, ...)
 	if event == "ADDON_LOADED" then
 		local addonName = arg1
 		if addonName == "ChronicleLogger" then
-			self:InitDB()
+			self:Init()
 			self:Print("Chronicle v" .. self.version .. " loaded. Type /chronicle help for commands.")
 		end
 	elseif event == "PLAYER_ENTERING_WORLD" then
