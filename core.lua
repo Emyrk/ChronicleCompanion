@@ -2,7 +2,6 @@
 -- Chronicle Addon for Turtle WoW
 -- =============================================================================
 
-
 -- =============================================================================
 -- Chronicle Namespace
 -- =============================================================================
@@ -12,6 +11,7 @@
 ---@field db ChronicleDB
 ---@field superWoW boolean
 ---@field superWoWLogger boolean
+---@field challenges string comma-separated list of challenges
 Chronicle = {}
 Chronicle.version = "0.1"
 
@@ -34,7 +34,15 @@ Chronicle.version = "0.1"
 
 function Chronicle:Init()
 	self:InitDeps()
+	self:InitChallenges()
 	self:InitDB()
+end
+
+function Chronicle:InitChallenges()
+	self.challenges = self:PlayerChallenges()
+	if self.challenges ~= "" then
+		self:Print("Player challenges: " .. self.challenges)
+	end
 end
 
 function Chronicle:InitDeps()
@@ -71,18 +79,47 @@ function Chronicle:InitDB()
 	self.logging = logging
 end
 
-function Chronicle:IsLevelOneLunatic() 
- for tab = 1, GetNumSpellTabs() do
+-- Map spell name -> key you want in the return table
+local CHALLENGE_SPELLS = {
+	["Level One Lunatic"] = "lunatic",
+	["Hardcore"] = "hardcore",
+	["Boaring Adventure"] = "boaring",
+	["Path of the Brewmaster"] = "brewmaster",
+	["Exhaustion"] = "exhaustion",
+	["Slow & Steady"] = "slowsteady",
+	["Traveling Craftmaster"] = "craftmaster",
+	["Vagrant's Endeavor"] = "vagrant",
+}
+
+-- PlayerChallenges returns a comma-separated list of challenge keys the player has
+--- @return string
+function Chronicle:PlayerChallenges()
+ local challenges = {}
+  for tab = 1, GetNumSpellTabs() do
     local _, _, offset, numSpells = GetSpellTabInfo(tab)
     for i = 1, numSpells do
       local name = GetSpellName(offset + i, "spell")
-      if name and name == "Level One Lunatic" then
-        return true
+      local key = name and CHALLENGE_SPELLS[name]
+      if key then
+        challenges[key] = true
       end
     end
   end
-	return false
+
+	local keys = {}
+	for k in pairs(challenges) do table.insert(keys, k) end
+	table.sort(keys)
+	return table.concat(keys, ",")
 end
+
+-- ChronicleTest = {}
+-- for k, v in pairs(_G) do
+--   if type(v) == "function" then
+--     table.insert(ChronicleTest, k)
+--   end
+-- end
+
+
 
 ---@param guid string
 ---@return string
@@ -129,15 +166,17 @@ function Chronicle:UpdateUnit(guid)
 
 	self.db.units[guid] = unitData
 
-	local logLine = string.format("UNIT_INFO: %s&%s&%s&%s&%s&%s&%s%s",
+	local logLine = string.format("UNIT_INFO: %s&%s&%s&%s&%s&%s&%s%s%s",
 		date("%d.%m.%y %H:%M:%S"),
 		unitData.guid,
-		UnitIsPlayer(unitData.guid) and "1" or "0",
+		UnitIsUnit(unitData.guid, "player") and "1" or "0",
 		unitData.name,
 		unitData.canCooperate and "1" or "0",
 		unitData.owner or "",
 		buffs or "",
-		unitData.level or "0"
+		unitData.level or "0",
+		-- Dump the player challenges if it is the player
+		UnitIsUnit(unitData.guid, "player") and self.challenges or "na"
 	)
 	CombatLogAdd(logLine, 1)
 	Chronicle:CleanupOldUnits()
@@ -267,7 +306,8 @@ end
 function Chronicle:OnEvent(event, ...)
 	if event == "ADDON_LOADED" then
 		local addonName = arg1
-		if addonName == "ChronicleLogger" then
+		if addonName == "ChronicleCompanion" then
+			self.chronicleCompanionLoaded = true
 			self:Init()
 			self:Print("Chronicle v" .. self.version .. " loaded. Type /chronicle help for commands.")
 		end
@@ -293,7 +333,7 @@ function Chronicle:ADDON_LOADED()
 		return
 	end
 
-	self:InitDB()
+	self:Init()
 	self:Print("Chronicle v" .. self.version .. " loaded. Type /chronicle help for commands.")
 end
 

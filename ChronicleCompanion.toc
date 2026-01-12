@@ -4,9 +4,10 @@
 ## Version: 0.1
 ## DefaultState: enabled
 ## Author: Emyrk
-## SavedVariablesPerCharacter: 
+## SavedVariablesPerCharacter: ChronicleTest
 ## Dependencies: SuperWowCombatLogger
 
+util.lua
 core.lua
 debug.lua
 slash.lua
