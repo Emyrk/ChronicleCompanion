@@ -166,7 +166,7 @@ function Chronicle:UpdateUnit(guid)
 
 	self.db.units[guid] = unitData
 
-	local logLine = string.format("UNIT_INFO: %s&%s&%s&%s&%s&%s&%s%s%s",
+	local logLine = string.format("UNIT_INFO: %s&%s&%s&%s&%s&%s&%s&%s&%s",
 		date("%d.%m.%y %H:%M:%S"),
 		unitData.guid,
 		UnitIsUnit(unitData.guid, "player") and "1" or "0",
