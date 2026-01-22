@@ -1,3 +1,5 @@
+-- Handles all unit logging to combat logs
+
 ---@class ChronicleUnits
 ---@field units table<string, Unit> map of unit GUID to Unit
 ---@lastCleanup number timestamp of last cleanup
@@ -160,7 +162,6 @@ function ChronicleUnits:UpdateUnit(id, force)
 	)
 	CombatLogAdd(logLine, 1)
 	ChronicleUnits:CleanupOldUnits()
-	-- self:DebugPrint(logLine)
 end
 
 

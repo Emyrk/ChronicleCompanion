@@ -14,7 +14,12 @@
 Chronicle = {}
 Chronicle.version = "0.1"
 
+local inilialized = false
 function Chronicle:Init()
+	if inilialized then
+		return
+	end
+	inilialized = true
 	self.logging = LoggingCombat()
 	self:InitDeps()
 	InitChronicleUnits()
@@ -38,6 +43,7 @@ end
 -- =============================================================================
 
 function Chronicle:Reset()
+	Chronicle:Init()
 	ChronicleUnits:Reset()
 end
 
@@ -126,27 +132,39 @@ end
 
 function Chronicle:OnPlayerEnteringWorld()
 	self:Reset()
-	if not Chronicle:IsEnteringInstance() then
-		return
-	end
-
 	-- Always log the player info
 	Chronicle:LogPlayerContext() 
 
-	-- TODO: For non raids, probably do not do this.
-	if not IsInInstance() then
-		return
+	local logging = LoggingCombat() == 1
+
+	local isInstance, _ = IsInInstance()
+	local isEnteringInstance = Chronicle:IsEnteringInstance() and isInstance == 1
+
+	if isEnteringInstance then
+			StaticPopupDialogs["ENABLE_COMBAT_LOGGING"] = {
+				text = "Combat logging is disabled and you have entered an instance, do you want to enable it?",
+				button1 = "Enable Combat Logs",
+				button2 = "No",
+				OnAccept = ChronicleEnableCombatLogging,
+				timeout = 30,
+				whileDead = true,
+				hideOnEscape = true
+			}
+			StaticPopup_Show("ENABLE_COMBAT_LOGGING")
+	else 
+		if logging then
+			StaticPopupDialogs["ENABLE_COMBAT_LOGGING"] = {
+				text = "Combat logging is enabled, but you are not in an instance. Do you want to disable it?",
+				button1 = "Disable Combat Logs",
+				button2 = "No",
+				OnAccept = ChronicleDisableCombatLogging,
+				timeout = 30,
+				whileDead = true,
+				hideOnEscape = true
+			}
+			StaticPopup_Show("ENABLE_COMBAT_LOGGING")
+		end
 	end
-	
-	StaticPopupDialogs["ENABLE_COMBAT_LOGGING"] = {
-		text = "Would you like to enable Combat Logging?",
-		button1 = "Yes",
-		button2 = "No",
-		OnAccept = ChronicleEnableCombatLogging,
-		timeout = 30,
-		whileDead = true,
-		hideOnEscape = true
-	}
 end
 
 function Chronicle:OnEvent(event, ...)
@@ -253,14 +271,14 @@ function Chronicle:LogRealm(force)
 		return
 	end
 	
-	local version, build, date = GetBuildInfo()
+	local version, build, buildDate = GetBuildInfo()
 	local realmName = GetRealmName()
 
 	local logLine = string.format("REALM_INFO: %s&%s&%s&%s&%s",
 		date("%d.%m.%y %H:%M:%S"),
 		version,
 		build,
-		date,
+		buildDate,
 		realmName
 	)
 	CombatLogAdd(logLine, 1)

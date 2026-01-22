@@ -8,7 +8,7 @@
 ## Dependencies: SuperWowCombatLogger
 
 util.lua
-units/units.lua
+units.lua
 core.lua
 debug.lua
 slash.lua
