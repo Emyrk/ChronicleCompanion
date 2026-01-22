@@ -164,6 +164,10 @@ function Chronicle:OnPlayerEnteringWorld()
 	-- Just use the in instance check in case they /reload
 	local isEnteringInstance = isInstance == 1 -- and Chronicle:IsEnteringInstance()
 
+	if self.superWoWLogger then
+		return -- SuperWoWLogging handles the turning on/off combat logs
+	end
+
 	if isEnteringInstance then
 		if not logging then
 			StaticPopupDialogs["ENABLE_COMBAT_LOGGING"] = {
