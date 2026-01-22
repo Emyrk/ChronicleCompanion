@@ -8,42 +8,16 @@
 
 ---@class Chronicle
 ---@field version string
----@field db ChronicleDB ephemeral database
 ---@field superWoW boolean if superWoW is present
 ---@field superWoWLogger boolean if superWoWLogger is present
----@field challenges string comma-separated list of challenges of the player
+---@field logging boolean if combat logging is currently enabled
 Chronicle = {}
 Chronicle.version = "0.1"
 
--- =============================================================================
--- Database Management
--- =============================================================================
-
----@class ChronicleDB
----@field units UnitsTable
----@field logging boolean
-
----@class UnitsTable
----@field id string unit GUID
----@field name string unit name
----@field owner string guid of owner or ""
----@field last_seen number timestamp of last seen
----@field canCooperate boolean whether unit can cooperate
----@field logged number timestamp of last logged
----@field level number unit level
-
 function Chronicle:Init()
+	self.logging = LoggingCombat()
 	self:InitDeps()
-	self:InitChallenges()
-	self:InitDB()
-end
-
---- Loads player challenges
-function Chronicle:InitChallenges()
-	self.challenges = self:PlayerChallenges()
-	if self.challenges ~= "" then
-		self:Print("Player challenges: " .. self.challenges)
-	end
+	InitChronicleUnits()
 end
 
 function Chronicle:InitDeps()
@@ -59,59 +33,12 @@ function Chronicle:InitDeps()
 	-- TODO: Add some UI alerts if deps are missing
 end
 
--- Initialize the database
-function Chronicle:InitDB()
-	local logging = LoggingCombat() == 1
-	-- Create default structure if DB doesn't exist or not up to date
-	if not ChronicleDB  or ChronicleDB.version ~= self.version then
-		ChronicleDB = {
-			version = self.version,
-			units = {},  -- Stores GUID -> unit data
-			logging = logging
-		}
-	end
-	
-	-- Ensure units table exists
-	if not ChronicleDB.units then
-		ChronicleDB.units = {}
-	end
-	
-	self.db = ChronicleDB
-	self.logging = logging
-end
+-- =============================================================================
+-- Database Management
+-- =============================================================================
 
--- Map spell name -> key you want in the return table
--- TODO: Switch to spell ids, as names can be localized
-local CHALLENGE_SPELLS = {
-	["Level One Lunatic"] = "lunatic",
-	["Hardcore"] = "hardcore",
-	["Boaring Adventure"] = "boaring",
-	["Path of the Brewmaster"] = "brewmaster",
-	["Exhaustion"] = "exhaustion",
-	["Slow & Steady"] = "slowsteady",
-	["Traveling Craftmaster"] = "craftmaster",
-	["Vagrant's Endeavor"] = "vagrant",
-}
-
--- PlayerChallenges returns a comma-separated list of challenge keys the player has
---- @return string
-function Chronicle:PlayerChallenges()
- local challenges = {}
-  for tab = 1, GetNumSpellTabs() do
-    local _, _, offset, numSpells = GetSpellTabInfo(tab)
-    for i = 1, numSpells do
-      local name = GetSpellName(offset + i, "spell")
-      local key = name and CHALLENGE_SPELLS[name]
-      if key then
-        challenges[key] = true
-      end
-    end
-  end
-
-	local keys = {}
-	for k in pairs(challenges) do table.insert(keys, k) end
-	table.sort(keys)
-	return table.concat(keys, ",")
+function Chronicle:Reset()
+	ChronicleUnits:Reset()
 end
 
 -- ChronicleTest = {}
@@ -120,96 +47,6 @@ end
 --     table.insert(ChronicleTest, k)
 --   end
 -- end
-
-
---- Returns a string representation of the unit's buffs in csv format
----@param guid string
----@return string
-function Chronicle:unitBuffs(guid)
-	local auras = ""
-	local prefix = ","
-	for i=1, 31 do
-			local buffTexture, buffApplications, buffID = UnitBuff(guid, i)
-			if not buffTexture then
-					return auras
-			end
-			buffApplications = buffApplications or 1
-			auras = auras .. string.format("%s%d=%d", prefix, buffID, buffApplications)
-			prefix = ","
-	end
-	return auras
-end
-
---- Add or update a unit in the database
-function Chronicle:UpdateUnit(guid)
-	if not guid then return end
-	local unitData = self.db.units[guid] or {}
-	local lastLogged = unitData.logged or 0
-	if time() - lastLogged < 300 then
-		return
-	end
-
-	unitData.guid = guid
-	unitData.name = UnitName(guid)
-	unitData.owner = ""
-	unitData.last_seen = time()
-	unitData.canCooperate = UnitCanCooperate("player", guid)
-	unitData.logged = time()
-	unitData.level = UnitLevel(guid)
-	-- No need to cache this info.
-	local buffs = Chronicle:unitBuffs(guid)
-
-	-- Check for owner unit
-	local ok, ownerGuid = UnitExists(guid.."owner")
-	if ok then
-		unitData.owner = ownerGuid
-	end
-	
-
-	self.db.units[guid] = unitData
-
-	local logLine = string.format("UNIT_INFO: %s&%s&%s&%s&%s&%s&%s&%s&%s",
-		date("%d.%m.%y %H:%M:%S"),
-		unitData.guid,
-		UnitIsUnit(unitData.guid, "player") and "1" or "0",
-		unitData.name,
-		unitData.canCooperate and "1" or "0",
-		unitData.owner or "",
-		buffs or "",
-		unitData.level or "0",
-		-- Dump the player challenges if it is the player
-		UnitIsUnit(unitData.guid, "player") and self.challenges or "na"
-	)
-	CombatLogAdd(logLine, 1)
-	Chronicle:CleanupOldUnits()
-	-- self:DebugPrint(logLine)
-end
-
-function Chronicle:Reset()
-	self.db.units = {}
-	self:Print("Chronicle database reset.")
-end
-
---- Clean up old units that haven't been seen in a while
-function Chronicle:CleanupOldUnits(timeoutSeconds)
-	local currentTime = time()
-	timeoutSeconds = timeoutSeconds or 300  -- Default 5 minutes
-	if self.lastCleanup and (currentTime - self.lastCleanup) < timeoutSeconds then
-		return 0 -- Skip cleanup if done recently
-	end
-
-	local removed = 0
-	
-	for guid, unit in pairs(self.db.units) do
-		if unit.last_seen and (currentTime - unit.last_seen) > timeoutSeconds then
-			self.db.units[guid] = nil
-			removed = removed + 1
-		end
-	end
-	
-	Chronicle.lastCleanup = time()
-	return removed
-end
 
 -- =============================================================================
 -- Event Frame
@@ -262,7 +99,10 @@ function Chronicle:RAW_COMBATLOG()
 	-- Reset the db on first logging event
 	if not self.logging then
 		self.logging = true
+
 		self:Reset()
+		Chronicle:Print("Combat Logging Enabled - Logging player context")
+		Chronicle:LogPlayerContext() 
 	end
 
 	local event_name = arg1
@@ -272,14 +112,14 @@ function Chronicle:RAW_COMBATLOG()
 	-- local input = "Mob died: 0x000000000000ABCD killed by 0x0000000000001234"
 	local guids = FindHexGUIDs(log)
 	for i = 1, table.getn(guids) do
-		self:UpdateUnit(guids[i])
+		ChronicleUnits:UpdateUnit(guids[i])
 	end
 
 	local hasYou = string.match(log, " [yY]ou(['.\\sr])")
 	if hasYou then
 		local ok, playerGuid = UnitExists("player")
 		if ok then
-			self:UpdateUnit(playerGuid)
+			ChronicleUnits:UpdateUnit(playerGuid)
 		end
 	end
 end
@@ -289,6 +129,9 @@ function Chronicle:OnPlayerEnteringWorld()
 	if not Chronicle:IsEnteringInstance() then
 		return
 	end
+
+	-- Always log the player info
+	Chronicle:LogPlayerContext() 
 
 	-- TODO: For non raids, probably do not do this.
 	if not IsInInstance() then
@@ -313,6 +156,7 @@ function Chronicle:OnEvent(event, ...)
 			self.chronicleCompanionLoaded = true
 			self:Init()
 			self:Print("Chronicle v" .. self.version .. " loaded. Type /chronicle help for commands.")
+			Chronicle:LogPlayerContext() 
 		end
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		self:OnPlayerEnteringWorld()
@@ -366,6 +210,7 @@ end
 function Chronicle:IsEnteringInstance()
 	local x, y = GetPlayerMapPosition("player")
 	if x == nil or y == nil then
+		-- These should never be nil, but just in case
 		return true
 	end
 	return x == y and y == 0
@@ -387,3 +232,36 @@ end
 -- =============================================================================
 -- Usage example:
 -- Chronicle:UpdateUnit("0x0000000000001234", "PlayerName", "OwnerName", {level = 60, class = "Warrior"})
+
+
+-- =============================================================================
+-- Example: Custom logging events
+-- =============================================================================
+
+--- Emits a log line with the player context information for the parser to understand
+--- where the logs are coming from.
+function Chronicle:LogPlayerContext() 
+	ChronicleUnits:UpdateUnit("player", true)
+	Chronicle:LogRealm(true)
+end
+
+local lastRealmLogTime = 0
+--- Emits a log line with realm and builds information to identify the server and realm
+function Chronicle:LogRealm(force)
+	-- Every 10 minutes
+	if not force and time() - lastRealmLogTime < 600 then
+		return
+	end
+	
+	local version, build, date = GetBuildInfo()
+	local realmName = GetRealmName()
+
+	local logLine = string.format("REALM_INFO: %s&%s&%s&%s&%s",
+		date("%d.%m.%y %H:%M:%S"),
+		version,
+		build,
+		date,
+		realmName
+	)
+	CombatLogAdd(logLine, 1)
+end
