@@ -35,7 +35,29 @@ function Chronicle:InitDeps()
 		self.superWoWLogger = false
 	end
 
-	-- TODO: Add some UI alerts if deps are missing
+
+	if not self.superWoW or not self.superWoWLogger then
+		Chronicle:Print("Warning: SuperWoW or SuperWoW Logger not detected. Some features may be disabled.")
+		local text = ""
+		if not self.superWoW then
+			text = text .. "SuperWoW "
+		end
+		if not self.superWoWLogger then
+			if not self.superWoW then
+				text = text .. "and "
+			end
+			text = text .. "SuperWoW Logger "
+		end
+
+		StaticPopupDialogs["DEPENDENCIES_MISSING"] = {
+			text = text .. "not detected. The ChronicleCompanion addon requires both of these addons to function properly. Disable this addon, or fix the missing dependencies.",
+			button1 = "Ok",
+			timeout = 30,
+			whileDead = true,
+			hideOnEscape = true
+		}
+		StaticPopup_Show("DEPENDENCIES_MISSING")
+	end
 end
 
 -- =============================================================================
@@ -181,6 +203,12 @@ function Chronicle:OnEvent(event, ...)
 	elseif event == "RAW_COMBATLOG" then
 		self:RAW_COMBATLOG()
 	elseif event == "PLAYER_LOGIN" then
+	elseif event == "PLAYER_REGEN_DISABLED" then
+		self:LogPlayerPosition()
+	elseif event == "PLAYER_REGEN_ENABLED" then
+		self:LogPlayerPosition()
+
+
 		-- local existing = LoggingCombat()
 		-- LoggingCombat(1)
 		-- local zone = GetRealZoneText()
@@ -280,6 +308,33 @@ function Chronicle:LogRealm(force)
 		build,
 		buildDate,
 		realmName
+	)
+	CombatLogAdd(logLine, 1)
+end
+
+-- Unsure if this is useful, but want to try it.
+function Chronicle:LogPlayerPosition()
+	local x, y = GetPlayerMapPosition("player")
+	if x == nil or y == nil then
+		-- These should never be nil, but just in case
+		return
+	end
+
+	if x == 0 or y == 0 then
+		-- Invalid position
+		return
+	end
+
+	local  _ guid = UnitExists("player")
+	if not guid then
+		return
+	end
+
+	local logLine = string.format("PLAYER_POSITION: %s&%s&%f&%f",
+		date("%d.%m.%y %H:%M:%S"),
+		guid,
+		x,
+		y
 	)
 	CombatLogAdd(logLine, 1)
 end
