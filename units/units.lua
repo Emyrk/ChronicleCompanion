@@ -49,25 +49,51 @@ end
 -- Map spell name -> key you want in the return table
 -- TODO: Switch to spell ids, as names can be localized
 local CHALLENGE_SPELLS = {
-	["Level One Lunatic"] = "lunatic",
-	["Hardcore"] = "hardcore",
-	["Boaring Adventure"] = "boaring",
-	["Path of the Brewmaster"] = "brewmaster",
-	["Exhaustion"] = "exhaustion",
-	["Slow & Steady"] = "slowsteady",
-	["Traveling Craftmaster"] = "craftmaster",
-	["Vagrant's Endeavor"] = "vagrant",
+  ["enUS"] = {
+    ["Level One Lunatic"] = "lunatic",
+    ["Hardcore"] = "hardcore",
+    ["Boaring Adventure"] = "boaring",
+    ["Path of the Brewmaster"] = "brewmaster",
+    ["Exhaustion"] = "exhaustion",
+    ["Slow & Steady"] = "slowsteady",
+    ["Traveling Craftmaster"] = "craftmaster",
+    ["Vagrant's Endeavor"] = "vagrant",
+  },
+  -- I need people with different language clients to fill this in.
+  -- ["enGB"] = {
+
+  -- },
+  -- ["deDE"] = {
+
+  -- },
+  -- ["esES"] = {
+
+  -- },
+  -- ["frFR"] = {
+
+  -- },
+  -- ["ruRU"] = {
+
+  -- },
 }
 
 -- PlayerChallenges returns a comma-separated list of challenge keys the player has
 --- @return string
 function ChronicleUnits:PlayerChallenges()
- local challenges = {}
+  local _, locale = GetLocale()
+
+  local spellNames = CHALLENGE_SPELLS[locale]
+  if spellNames == nil then
+    -- Fallback to enUS
+    spellNames = CHALLENGE_SPELLS["enUS"]
+  end
+
+  local challenges = {}
   for tab = 1, GetNumSpellTabs() do
     local _, _, offset, numSpells = GetSpellTabInfo(tab)
     for i = 1, numSpells do
       local name = GetSpellName(offset + i, "spell")
-      local key = name and CHALLENGE_SPELLS[name]
+      local key = name and spellNames[name]
       if key then
         challenges[key] = true
       end
