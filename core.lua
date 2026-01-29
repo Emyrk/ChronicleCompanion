@@ -326,7 +326,7 @@ function Chronicle:LogPlayerPosition()
 		return
 	end
 
-	local  _ guid = UnitExists("player")
+	local  _, guid = UnitExists("player")
 	if not guid then
 		return
 	end
