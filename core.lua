@@ -343,9 +343,11 @@ end
 
 -- Helpful when parsing to get the right timezone context
 function Chronicle:LogTimings()
+	local ts = time()
+
 	local logLine = string.format("CLOCK_INFO: %s&%s",
-		date("%d.%m.%y %H:%M:%S"), -- Local time
-		date("!%d.%m.%y %H:%M:%S") -- UTC time
+		date("%d.%m.%y %H:%M:%S", ts), -- Local time
+		date("!%d.%m.%y %H:%M:%S", ts) -- UTC time
 	)
 	CombatLogAdd(logLine, 1)
 end
