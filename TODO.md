@@ -13,4 +13,5 @@ Armory Extraction
 
 Before publish:
 
-- Remove debug.lua, or fix it
+- Set combatlog range to further, make addon warn 
+
