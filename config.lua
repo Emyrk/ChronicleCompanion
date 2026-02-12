@@ -72,6 +72,49 @@ function Chronicle:DebugPrint(msg)
 end
 
 -- =============================================================================
+-- Combat Log Range Management
+-- =============================================================================
+
+--- Get the current combat log range from CVars.
+---@return number range The current combat log range in yards
+function Chronicle:GetCombatLogRange()
+    -- Try to get the CVar - different clients may use different names
+    local range = tonumber(GetCVar("CombatLogRangeParty")) 
+               or tonumber(GetCVar("CombatLogRangeHostilePlayers"))
+               or tonumber(GetCVar("CombatLogRange"))
+               or 50  -- fallback default
+    return range
+end
+
+--- Apply combat log range based on whether player is in an instance.
+---@param isInstance boolean Whether the player is currently in an instance
+function Chronicle:ApplyCombatLogRange(isInstance)
+    local range
+    if isInstance then
+        range = self:GetSetting("combatLogRangeInstance")
+    else
+        range = self:GetSetting("combatLogRangeDefault")
+    end
+    
+    self:SetCombatLogRange(range)
+    self:DebugPrint("Set combat log range to " .. range .. " yards (inInstance=" .. tostring(isInstance) .. ")")
+end
+
+--- Set the combat log range CVars.
+---@param range number The range in yards to set
+function Chronicle:SetCombatLogRange(range)
+    -- Set all known combat log range CVars for compatibility
+    if SetCVar then
+        SetCVar("CombatLogRangeParty", range)
+        SetCVar("CombatLogRangeFriendlyPlayers", range)
+        SetCVar("CombatLogRangeHostilePlayers", range)
+        SetCVar("CombatLogRangeFriendlyPlayersPets", range)
+        SetCVar("CombatLogRangeHostilePlayersPets", range)
+        SetCVar("CombatLogRangeCreature", range)
+    end
+end
+
+-- =============================================================================
 -- Options Panel UI (Vanilla-compatible standalone frame)
 -- =============================================================================
 
@@ -79,7 +122,7 @@ function Chronicle:CreateOptionsPanel()
     -- Main frame
     local panel = CreateFrame("Frame", "ChronicleOptionsPanel", UIParent)
     panel:SetWidth(350)
-    panel:SetHeight(470)
+    panel:SetHeight(545)
     panel:SetPoint("CENTER", 0, 0)
     panel:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -108,7 +151,79 @@ function Chronicle:CreateOptionsPanel()
     subtitle:SetPoint("TOP", title, "BOTTOM", 0, -4)
     subtitle:SetText("Configure combat logging behavior")
     
-    local yOffset = -65
+    -- =============================================================================
+    -- Combat Log Status Indicator
+    -- =============================================================================
+    local statusLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    statusLabel:SetPoint("TOPLEFT", 20, -55)
+    statusLabel:SetText("Combat Logging:")
+    
+    local statusText = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    statusText:SetPoint("LEFT", statusLabel, "RIGHT", 5, 0)
+    statusText:SetText("|cff00ff00ON|r")  -- Will be updated in OpenOptionsPanel
+    
+    local toggleButton = CreateFrame("Button", "ChronicleOptionsToggleLogging", panel, "UIPanelButtonTemplate")
+    toggleButton:SetWidth(60)
+    toggleButton:SetHeight(22)
+    toggleButton:SetPoint("LEFT", statusText, "RIGHT", 10, 0)
+    toggleButton:SetText("Toggle")
+    toggleButton:SetScript("OnClick", function()
+        local logging = LoggingCombat() == 1
+        if logging then
+            LoggingCombat(0)
+            Chronicle:Print("Combat logging disabled")
+        else
+            LoggingCombat(1)
+            Chronicle:Print("Combat logging enabled")
+        end
+        Chronicle:RefreshOptionsPanel()
+    end)
+    
+    panel.statusText = statusText
+    panel.toggleButton = toggleButton
+    
+    -- Combat Log Range Indicator
+    local rangeLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    rangeLabel:SetPoint("TOPLEFT", 20, -72)
+    rangeLabel:SetText("Current Range:")
+    
+    local rangeText = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    rangeText:SetPoint("LEFT", rangeLabel, "RIGHT", 5, 0)
+    rangeText:SetText("|cffffff00-- yards|r")  -- Will be updated in RefreshOptionsPanel
+    
+    -- Instance Indicator
+    local instanceLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    instanceLabel:SetPoint("LEFT", rangeText, "RIGHT", 15, 0)
+    instanceLabel:SetText("In Instance:")
+    
+    local instanceText = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    instanceText:SetPoint("LEFT", instanceLabel, "RIGHT", 5, 0)
+    instanceText:SetText("|cffff0000No|r")  -- Will be updated in RefreshOptionsPanel
+    
+    panel.rangeText = rangeText
+    panel.instanceText = instanceText
+    
+    local yOffset = -100
+    
+    -- =============================================================================
+    -- SuperWoWLogger Warning (shown if detected)
+    -- =============================================================================
+    local superWoWWarning = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    superWoWWarning:SetPoint("TOPLEFT", 20, yOffset)
+    superWoWWarning:SetText("|cffff6600SuperWoWLogger detected!|r")
+    superWoWWarning:Hide()
+    
+    local superWoWWarningDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    superWoWWarningDesc:SetPoint("TOPLEFT", superWoWWarning, "BOTTOMLEFT", 0, -2)
+    superWoWWarningDesc:SetText("Some options are disabled. Disable SuperWoWLogger\nto use Chronicle's combat log management.")
+    superWoWWarningDesc:SetTextColor(0.6, 0.6, 0.6)
+    superWoWWarningDesc:Hide()
+    
+    panel.superWoWWarning = superWoWWarning
+    panel.superWoWWarningDesc = superWoWWarningDesc
+    
+    -- Reserve space for warning (will be empty if not shown)
+    yOffset = yOffset - 40
     
     -- =============================================================================
     -- Checkbox: Turtlogs Compatibility
@@ -256,6 +371,9 @@ function Chronicle:CreateOptionsPanel()
         local value = math.floor(this:GetValue())
         Chronicle:SetSetting("combatLogRangeDefault", value)
         getglobal(this:GetName() .. "Text"):SetText("Default: " .. value .. " yards")
+        -- Apply the appropriate range for current context
+        Chronicle:ApplyCombatLogRange(IsInInstance() == 1)
+        Chronicle:RefreshOptionsPanel()
     end)
     
     yOffset = yOffset - 45
@@ -277,6 +395,9 @@ function Chronicle:CreateOptionsPanel()
         local value = math.floor(this:GetValue())
         Chronicle:SetSetting("combatLogRangeInstance", value)
         getglobal(this:GetName() .. "Text"):SetText("In Instance: " .. value .. " yards")
+        -- Apply the appropriate range for current context
+        Chronicle:ApplyCombatLogRange(IsInInstance() == 1)
+        Chronicle:RefreshOptionsPanel()
     end)
     
     -- Store references for refreshing
@@ -299,8 +420,39 @@ function Chronicle:OpenOptionsPanel()
         self:CreateOptionsPanel()
     end
     
-    -- Refresh checkbox states from saved variables
+    self:RefreshOptionsPanel()
+    self.optionsPanel:Show()
+end
+
+--- Refresh all options panel values from current state and saved variables.
+function Chronicle:RefreshOptionsPanel()
+    if not self.optionsPanel then
+        return
+    end
+    
     local panel = self.optionsPanel
+    
+    -- Refresh combat log status
+    local logging = LoggingCombat() == 1
+    if logging then
+        panel.statusText:SetText("|cff00ff00ON|r")
+    else
+        panel.statusText:SetText("|cffff0000OFF|r")
+    end
+    
+    -- Refresh combat log range
+    local currentRange = self:GetCombatLogRange()
+    panel.rangeText:SetText("|cffffff00" .. currentRange .. " yards|r")
+    
+    -- Refresh instance indicator
+    local isInstance = IsInInstance() == 1
+    if isInstance then
+        panel.instanceText:SetText("|cff00ff00Yes|r")
+    else
+        panel.instanceText:SetText("|cffff0000No|r")
+    end
+    
+    -- Refresh checkbox states from saved variables
     panel.turtlogsCheck:SetChecked(self:GetSetting("turtlogsCompatibility"))
     panel.autoLogCheck:SetChecked(self:GetSetting("autoCombatLogToggle"))
     panel.disableReminderCheck:SetChecked(self:GetSetting("disableCombatlogReminder"))
@@ -315,5 +467,28 @@ function Chronicle:OpenOptionsPanel()
     local chatName = tab and tab:GetText() or ("Chat " .. chatFrameIndex)
     UIDropDownMenu_SetText(chatName, panel.debugChatDropdown)
     
-    panel:Show()
+    -- Handle SuperWoWLogger detection - disable managed options
+    if self.superWoWLogger then
+        panel.superWoWWarning:Show()
+        panel.superWoWWarningDesc:Show()
+        -- Disable the checkboxes
+        panel.turtlogsCheck:Disable()
+        panel.autoLogCheck:Disable()
+        panel.disableReminderCheck:Disable()
+        -- Gray out the text
+        getglobal(panel.turtlogsCheck:GetName() .. "Text"):SetTextColor(0.5, 0.5, 0.5)
+        getglobal(panel.autoLogCheck:GetName() .. "Text"):SetTextColor(0.5, 0.5, 0.5)
+        getglobal(panel.disableReminderCheck:GetName() .. "Text"):SetTextColor(0.5, 0.5, 0.5)
+    else
+        panel.superWoWWarning:Hide()
+        panel.superWoWWarningDesc:Hide()
+        -- Enable the checkboxes
+        panel.turtlogsCheck:Enable()
+        panel.autoLogCheck:Enable()
+        panel.disableReminderCheck:Enable()
+        -- Restore text color
+        getglobal(panel.turtlogsCheck:GetName() .. "Text"):SetTextColor(1, 1, 1)
+        getglobal(panel.autoLogCheck:GetName() .. "Text"):SetTextColor(1, 1, 1)
+        getglobal(panel.disableReminderCheck:GetName() .. "Text"):SetTextColor(1, 1, 1)
+    end
 end

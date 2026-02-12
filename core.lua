@@ -64,7 +64,7 @@ function Chronicle:InitDeps()
 		StaticPopup_Show("SUPERWOW_VERSION_MISSING")
 	end
 
-	if ChronicleCompareVersion(version, "1.5") <= 0 then
+	if ChronicleCompareVersion(version, "1.5") < 0 then
 		StaticPopupDialogs["SUPERWOW_VERSION_OUTOFDATE"] = {
 			text = "The SuperWoW mod by Balake is out of date (found version "..version.."). Version >=1.5 is required. Disable this addon or update SuperWoW",
 			button1 = "Ok",
@@ -172,12 +172,15 @@ function Chronicle:OnPlayerEnteringWorld()
 end
 
 --- Called when the player's instance state may have changed.
---- Handles automatic combat log toggling and reminder popups based on config settings.
+--- Handles automatic combat log toggling, range adjustment, and reminder popups based on config settings.
 function Chronicle:OnInstanceChange()
 	local isInstance = IsInInstance() == 1
 	local logging = LoggingCombat() == 1
 	
 	self:DebugPrint("OnInstanceChange: inInstance=" .. tostring(isInstance) .. ", logging=" .. tostring(logging))
+	
+	-- Always set combat log range based on instance state (even with SuperWoWLogger)
+	self:ApplyCombatLogRange(isInstance)
 	
 	-- If SuperWoWLogger is present, let it handle combat log toggling
 	if self.superWoWLogger then
