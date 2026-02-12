@@ -52,69 +52,6 @@ function Chronicle:SetSetting(key, value)
 end
 
 -- =============================================================================
--- Debug Output
--- =============================================================================
-
---- Print a debug message to the configured chat window (only if debug mode is enabled).
----@param msg string|number The message to print
-function Chronicle:DebugPrint(msg)
-    if not self:GetSetting("debugMode") then
-        return
-    end
-    
-    local frameIndex = self:GetSetting("debugChatFrame") or 1
-    local frame = getglobal("ChatFrame" .. frameIndex)
-    if not frame then
-        frame = DEFAULT_CHAT_FRAME
-    end
-    
-    frame:AddMessage("|cff88ffff[Chronicle Debug]|r " .. tostring(msg))
-end
-
--- =============================================================================
--- Combat Log Range Management
--- =============================================================================
-
---- Get the current combat log range from CVars.
----@return number range The current combat log range in yards
-function Chronicle:GetCombatLogRange()
-    -- Try to get the CVar - different clients may use different names
-    local range = tonumber(GetCVar("CombatLogRangeParty")) 
-               or tonumber(GetCVar("CombatLogRangeHostilePlayers"))
-               or tonumber(GetCVar("CombatLogRange"))
-               or 50  -- fallback default
-    return range
-end
-
---- Apply combat log range based on whether player is in an instance.
----@param isInstance boolean Whether the player is currently in an instance
-function Chronicle:ApplyCombatLogRange(isInstance)
-    local range
-    if isInstance then
-        range = self:GetSetting("combatLogRangeInstance")
-    else
-        range = self:GetSetting("combatLogRangeDefault")
-    end
-    
-    self:SetCombatLogRange(range)
-    self:DebugPrint("Set combat log range to " .. range .. " yards (inInstance=" .. tostring(isInstance) .. ")")
-end
-
---- Set the combat log range CVars.
----@param range number The range in yards to set
-function Chronicle:SetCombatLogRange(range)
-    -- Set all known combat log range CVars for compatibility
-    if SetCVar then
-        SetCVar("CombatLogRangeParty", range)
-        SetCVar("CombatLogRangeFriendlyPlayers", range)
-        SetCVar("CombatLogRangeHostilePlayers", range)
-        SetCVar("CombatLogRangeFriendlyPlayersPets", range)
-        SetCVar("CombatLogRangeHostilePlayersPets", range)
-        SetCVar("CombatLogRangeCreature", range)
-    end
-end
-
--- =============================================================================
 -- Options Panel UI (Vanilla-compatible standalone frame)
 -- =============================================================================
 
@@ -206,23 +143,25 @@ function Chronicle:CreateOptionsPanel()
     local yOffset = -100
     
     -- =============================================================================
-    -- SuperWoWLogger Warning (shown if detected)
+    -- SuperWoWLogger Status Indicator
     -- =============================================================================
-    local superWoWWarning = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    superWoWWarning:SetPoint("TOPLEFT", 20, yOffset)
-    superWoWWarning:SetText("|cffff6600SuperWoWLogger detected!|r")
-    superWoWWarning:Hide()
+    local superWoWStatusLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    superWoWStatusLabel:SetPoint("TOPLEFT", 20, yOffset)
+    superWoWStatusLabel:SetText("SuperWoWLogger:")
     
-    local superWoWWarningDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    superWoWWarningDesc:SetPoint("TOPLEFT", superWoWWarning, "BOTTOMLEFT", 0, -2)
-    superWoWWarningDesc:SetText("Some options are disabled. Disable SuperWoWLogger\nto use Chronicle's combat log management.")
-    superWoWWarningDesc:SetTextColor(0.6, 0.6, 0.6)
-    superWoWWarningDesc:Hide()
+    local superWoWStatusText = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    superWoWStatusText:SetPoint("LEFT", superWoWStatusLabel, "RIGHT", 5, 0)
+    superWoWStatusText:SetText("|cff888888Checking...|r")  -- Updated in RefreshOptionsPanel
     
-    panel.superWoWWarning = superWoWWarning
-    panel.superWoWWarningDesc = superWoWWarningDesc
+    local superWoWStatusDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    superWoWStatusDesc:SetPoint("TOPLEFT", superWoWStatusLabel, "BOTTOMLEFT", 0, -4)
+    superWoWStatusDesc:SetText("")  -- Updated in RefreshOptionsPanel
+    superWoWStatusDesc:SetTextColor(0.6, 0.6, 0.6)
     
-    -- Reserve space for warning (will be empty if not shown)
+    panel.superWoWStatusText = superWoWStatusText
+    panel.superWoWStatusDesc = superWoWStatusDesc
+    
+    -- Reserve space for status section
     yOffset = yOffset - 40
     
     -- =============================================================================
@@ -233,7 +172,11 @@ function Chronicle:CreateOptionsPanel()
     getglobal(turtlogsCheck:GetName() .. "Text"):SetText("Turtlogs Compatibility")
     turtlogsCheck:SetChecked(self:GetSetting("turtlogsCompatibility"))
     turtlogsCheck:SetScript("OnClick", function()
-        Chronicle:SetSetting("turtlogsCompatibility", this:GetChecked() == 1)
+        local enabled = this:GetChecked() == 1
+        Chronicle:SetSetting("turtlogsCompatibility", enabled)
+        if RPLL then
+            RPLL.turtlogsCompat = enabled
+        end
     end)
     
     local turtlogsDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
@@ -467,26 +410,40 @@ function Chronicle:RefreshOptionsPanel()
     local chatName = tab and tab:GetText() or ("Chat " .. chatFrameIndex)
     UIDropDownMenu_SetText(chatName, panel.debugChatDropdown)
     
-    -- Handle SuperWoWLogger detection - disable managed options
-    if self.superWoWLogger then
-        panel.superWoWWarning:Show()
-        panel.superWoWWarningDesc:Show()
-        -- Disable the checkboxes
+    -- Update SuperWoWLogger status display
+    if not self.superWoW then
+        -- SuperWoW not installed - cannot use any SuperWoWLogger
+        panel.superWoWStatusText:SetText("|cffff0000Not Available|r")
+        panel.superWoWStatusDesc:SetText("SuperWoW client mod required. Install from:https://github.com/balakethelock/SuperWoW")
+    elseif self.embeddedSuperWoWLogger then
+        -- Using embedded version
+        panel.superWoWStatusText:SetText("|cff00ff00Embedded|r")
+        panel.superWoWStatusDesc:SetText("Using Chronicle's built-in SuperWoWLogger.")
+    elseif IsAddOnLoaded and IsAddOnLoaded("SuperWowCombatLogger") then
+        -- Using external SuperWoWLogger addon - discouraged!
+        panel.superWoWStatusText:SetText("|cffff3300External (Not Recommended)|r")
+        panel.superWoWStatusDesc:SetText("Disable SuperWowCombatLogger addon!")
+    else
+        -- SuperWoW available but no logger loaded (shouldn't happen normally)
+        panel.superWoWStatusText:SetText("|cffff6600Unavailable|r")
+        panel.superWoWStatusDesc:SetText("SuperWoWLogger failed to load.")
+    end
+    
+    -- Handle options based on external vs embedded SuperWoWLogger
+    local externalLogger = IsAddOnLoaded and IsAddOnLoaded("SuperWowCombatLogger")
+    if externalLogger then
+        -- External logger controls these options - disable them
         panel.turtlogsCheck:Disable()
         panel.autoLogCheck:Disable()
         panel.disableReminderCheck:Disable()
-        -- Gray out the text
         getglobal(panel.turtlogsCheck:GetName() .. "Text"):SetTextColor(0.5, 0.5, 0.5)
         getglobal(panel.autoLogCheck:GetName() .. "Text"):SetTextColor(0.5, 0.5, 0.5)
         getglobal(panel.disableReminderCheck:GetName() .. "Text"):SetTextColor(0.5, 0.5, 0.5)
     else
-        panel.superWoWWarning:Hide()
-        panel.superWoWWarningDesc:Hide()
-        -- Enable the checkboxes
+        -- Chronicle controls these options - enable them
         panel.turtlogsCheck:Enable()
         panel.autoLogCheck:Enable()
         panel.disableReminderCheck:Enable()
-        -- Restore text color
         getglobal(panel.turtlogsCheck:GetName() .. "Text"):SetTextColor(1, 1, 1)
         getglobal(panel.autoLogCheck:GetName() .. "Text"):SetTextColor(1, 1, 1)
         getglobal(panel.disableReminderCheck:GetName() .. "Text"):SetTextColor(1, 1, 1)

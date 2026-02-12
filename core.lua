@@ -14,7 +14,6 @@ local gmatch = string.gmatch or string.gfind
 ---@field superWoWLogger boolean if superWoWLogger is present
 ---@field logging boolean if combat logging is currently enabled
 Chronicle = {}
-Chronicle.version = "0.1"
 
 local inilialized = false
 function Chronicle:Init()
@@ -32,14 +31,24 @@ end
 function Chronicle:InitDeps()
 	self.superWoW = false
 	self.superWoWLogger = false
+	self.embeddedSuperWoWLogger = false
+	
 	-- Check for SuperWoW requirement
 	if SetAutoloot then
 		self.superWoW = true
 	end
 
-	if log_combatant_info then
+	-- Check if any SuperWoWLogger is available (external or embedded)
+	if RPLL and log_combatant_info then
 		self.superWoWLogger = true
 	end
+
+
+	-- Load embedded SuperWoWLogger if external one isn't loaded
+	if not IsAddOnLoaded("SuperWowCombatLogger") then
+		self:LoadEmbeddedSuperWoWLogger()
+	end
+	
 
 	if not self.superWoW then
 		Chronicle:Print("Warning: The SuperWoW mod by Balake is not detected. This mod is required for ChronicleCompanion to work.")
@@ -242,6 +251,11 @@ function Chronicle:OnInstanceChange()
 			end
 		end
 	end
+	
+	-- Close options panel if visible
+	if self.optionsPanel and self.optionsPanel:IsShown() then
+		self.optionsPanel:Hide()
+	end
 end
 
 function Chronicle:OnEvent(event, ...)
@@ -250,7 +264,7 @@ function Chronicle:OnEvent(event, ...)
 		if addonName == "ChronicleCompanion" then
 			self.chronicleCompanionLoaded = true
 			self:Init()
-			self:Print("Chronicle v" .. self.version .. " loaded. Type /chronicle help for commands.")
+			self:Print("Chronicle v" .. GetAddOnMetadata("ChronicleCompanion", "Version") .. " loaded. Type /chronicle help for commands.")
 			Chronicle:LogPlayerContext() 
 		end
 	elseif event == "PLAYER_ENTERING_WORLD" then
@@ -355,12 +369,14 @@ function Chronicle:LogRealm(force)
 	local version, build, buildDate = GetBuildInfo()
 	local realmName = GetRealmName()
 
-	local logLine = string.format("REALM_INFO: %s&%s&%s&%s&%s",
+	local logLine = string.format("REALM_INFO: %s&%s&%s&%s&%s&%s&%s",
 		date("%d.%m.%y %H:%M:%S"),
 		version,
 		build,
 		buildDate,
-		realmName
+		realmName,
+		SUPERWOW_VERSION,
+		GetAddOnMetadata("ChronicleCompanion", "Version")
 	)
 	CombatLogAdd(logLine, 1)
 end
@@ -401,4 +417,68 @@ function Chronicle:LogTimings()
 		date("!%d.%m.%y %H:%M:%S", ts) -- UTC time
 	)
 	CombatLogAdd(logLine, 1)
+end
+
+-- =============================================================================
+-- Debug Output
+-- =============================================================================
+
+--- Print a debug message to the configured chat window (only if debug mode is enabled).
+---@param msg string|number The message to print
+function Chronicle:DebugPrint(msg)
+    -- If not loaded yet, don't try to debug log
+		if not self.GetSetting or not self:GetSetting("debugMode") then
+        return
+    end
+    
+    local frameIndex = self:GetSetting("debugChatFrame") or 1
+    local frame = getglobal("ChatFrame" .. frameIndex)
+    if not frame then
+        frame = DEFAULT_CHAT_FRAME
+    end
+    
+    frame:AddMessage("|cff88ffff[Chronicle Debug]|r " .. tostring(msg))
+end
+
+-- =============================================================================
+-- Combat Log Range Management
+-- =============================================================================
+
+--- Get the current combat log range from CVars.
+---@return number range The current combat log range in yards
+function Chronicle:GetCombatLogRange()
+    -- Try to get the CVar - different clients may use different names
+    local range = tonumber(GetCVar("CombatLogRangeParty")) 
+               or tonumber(GetCVar("CombatLogRangeHostilePlayers"))
+               or tonumber(GetCVar("CombatLogRange"))
+               or 50  -- fallback default
+    return range
+end
+
+--- Apply combat log range based on whether player is in an instance.
+---@param isInstance boolean Whether the player is currently in an instance
+function Chronicle:ApplyCombatLogRange(isInstance)
+    local range
+    if isInstance then
+        range = self:GetSetting("combatLogRangeInstance")
+    else
+        range = self:GetSetting("combatLogRangeDefault")
+    end
+    
+    self:SetCombatLogRange(range)
+    self:DebugPrint("Set combat log range to " .. range .. " yards (inInstance=" .. tostring(isInstance) .. ")")
+end
+
+--- Set the combat log range CVars.
+---@param range number The range in yards to set
+function Chronicle:SetCombatLogRange(range)
+    -- Set all known combat log range CVars for compatibility
+    if SetCVar then
+        SetCVar("CombatLogRangeParty", range)
+        SetCVar("CombatLogRangeFriendlyPlayers", range)
+        SetCVar("CombatLogRangeHostilePlayers", range)
+        SetCVar("CombatLogRangeFriendlyPlayersPets", range)
+        SetCVar("CombatLogRangeHostilePlayersPets", range)
+        SetCVar("CombatLogRangeCreature", range)
+    end
 end
