@@ -10,7 +10,7 @@ local DEFAULTS = {
     debugMode = false,
     debugChatFrame = 1,
     combatLogRangeDefault = 40,
-    combatLogRangeInstance = 200,
+    combatLogRangeInstance = 40,
 }
 
 -- =============================================================================
