@@ -3,6 +3,8 @@ if string.gmatch == nil and string.gfind then
     string.gmatch = string.gfind
 end
 
+local unpack = unpack or table.unpack
+
 if not string.match then
     string.match = function (s, pattern, init)
         init = init or 1
