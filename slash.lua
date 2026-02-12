@@ -1,5 +1,3 @@
--- Compatibility issue with gmatch sometimes being nil?
-local gmatch = string.gmatch or string.gfind
 -- =============================================================================
 -- Slash Commands
 -- =============================================================================
@@ -19,7 +17,7 @@ local function split(str, delim)
     if str == nil or str == "" then
         return result
     end
-    for part in gmatch(str, "([^" .. delim .. "]+)") do
+    for part in string.gmatch(str, "([^" .. delim .. "]+)") do
         table.insert(result, part)
     end
     return result

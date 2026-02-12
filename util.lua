@@ -1,5 +1,27 @@
--- Compatibility issue with gmatch sometimes being nil?
-local gmatch = string.gmatch or string.gfind
+-- Fix the global gmatch function for older Lua versions
+if string.gmatch == nil and string.gfind then
+    string.gmatch = string.gfind
+end
+
+if not string.match then
+    string.match = function (s, pattern, init)
+        init = init or 1
+        -- try to find captures
+        local results = { string.find(s, pattern, init) }
+        if table.getn(results) > 2 then
+            -- drop the start/end positions, keep captures
+            local captures = {}
+            for i = 3, table.getn(results) do
+                table.insert(captures, results[i])
+            end
+            return unpack(captures)
+        elseif results[1] and results[2] then
+            -- no captures, return the matched substring
+            return string.sub(s, results[1], results[2])
+        end
+        return nil
+    end
+end
 
 -- Compare version strings like "1.5.2" > "1.5"
 ---@param v1 string
@@ -9,7 +31,7 @@ function ChronicleCompareVersion(v1, v2)
     -- Returns: 1 if v1 > v2, -1 if v1 < v2, 0 if equal
     local function split(str)
         local parts = {}
-        for num in gmatch(str, "(%d+)") do
+        for num in string.gmatch(str, "(%d+)") do
             table.insert(parts, tonumber(num))
         end
         return parts
