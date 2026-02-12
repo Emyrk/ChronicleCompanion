@@ -39,27 +39,40 @@ function Chronicle:InitDeps()
 		self.superWoWLogger = true
 	end
 
-	if not self.superWoW or not self.superWoWLogger then
-		Chronicle:Print("Warning: SuperWoW or SuperWoW Logger not detected. Some features may be disabled.")
-		local text = ""
-		if not self.superWoW then
-			text = text .. "SuperWoW "
-		end
-		if not self.superWoWLogger then
-			if not self.superWoW then
-				text = text .. "and "
-			end
-			text = text .. "SuperWoW Logger "
-		end
+	if not self.superWoW then
+		Chronicle:Print("Warning: The SuperWoW mod by Balake is not detected. This mod is required for ChronicleCompanion to work.")
 
 		StaticPopupDialogs["DEPENDENCIES_MISSING"] = {
-			text = text .. "not detected. The ChronicleCompanion addon requires both of these addons to function properly. Disable this addon, or fix the missing dependencies.",
+			text = "The SuperWoW mod by Balake is not detected. The ChronicleCompanion addon requires both of these addons to function properly. Disable this addon, or fix the missing dependencies.",
 			button1 = "Ok",
 			timeout = 30,
 			whileDead = true,
 			hideOnEscape = true
 		}
 		StaticPopup_Show("DEPENDENCIES_MISSING")
+	end
+
+	local version = SUPERWOW_VERSION 
+	if not version or version == "" then
+		StaticPopupDialogs["SUPERWOW_VERSION_MISSING"] = {
+			text = "The SuperWoW mod by Balake is out of date. Version 1.5 is required. Disable this addon or update SuperWoW",
+			button1 = "Ok",
+			timeout = 30,
+			whileDead = true,
+			hideOnEscape = true
+		}
+		StaticPopup_Show("SUPERWOW_VERSION_MISSING")
+	end
+
+	if ChronicleCompareVersion(version, "1.5") <= 0 then
+		StaticPopupDialogs["SUPERWOW_VERSION_OUTOFDATE"] = {
+			text = "The SuperWoW mod by Balake is out of date (found version "..version.."). Version >=1.5 is required. Disable this addon or update SuperWoW",
+			button1 = "Ok",
+			timeout = 30,
+			whileDead = true,
+			hideOnEscape = true
+		}
+		StaticPopup_Show("SUPERWOW_VERSION_OUTOFDATE")
 	end
 end
 
@@ -94,13 +107,8 @@ function Chronicle:CreateEventFrame()
 	self.eventFrame:RegisterEvent("RAW_COMBATLOG")
 	self.eventFrame:RegisterEvent("PLAYER_LOGIN")
 	self.eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-	-- self.eventFrame:RegisterEvent("PLAYER_LOGIN")
-	-- self.eventFrame:RegisterEvent("PLAYER_LOGOUT")
-	
-	-- Add more events as needed for tracking units
-	-- self.eventFrame:RegisterEvent("UNIT_NAME_UPDATE")
-	-- self.eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
-	-- etc.
+	self.eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+	self.eventFrame:RegisterEvent("UPDATE_INSTANCE_INFO")
 end
 
 -- Finds all 0x0000000000000000-style hex strings
@@ -159,42 +167,74 @@ function Chronicle:OnPlayerEnteringWorld()
 	self:Reset()
 	-- Always log the player info
 	Chronicle:LogPlayerContext() 
+	-- Handle instance state
+	self:OnInstanceChange()
+end
 
+--- Called when the player's instance state may have changed.
+--- Handles automatic combat log toggling and reminder popups based on config settings.
+function Chronicle:OnInstanceChange()
+	local isInstance = IsInInstance() == 1
 	local logging = LoggingCombat() == 1
-
-	local isInstance, _ = IsInInstance()
-	-- Just use the in instance check in case they /reload
-	local isEnteringInstance = isInstance == 1 -- and Chronicle:IsEnteringInstance()
-
+	
+	self:DebugPrint("OnInstanceChange: inInstance=" .. tostring(isInstance) .. ", logging=" .. tostring(logging))
+	
+	-- If SuperWoWLogger is present, let it handle combat log toggling
 	if self.superWoWLogger then
-		return -- SuperWoWLogging handles the turning on/off combat logs
+		self:DebugPrint("SuperWoWLogger detected, skipping combat log management")
+		return
 	end
-
-	if isEnteringInstance then
-		if not logging then
-			StaticPopupDialogs["ENABLE_COMBAT_LOGGING"] = {
-				text = "Combat logging is disabled and you have entered an instance, do you want to enable it?",
-				button1 = "Enable Combat Logs",
-				button2 = "No",
-				OnAccept = ChronicleEnableCombatLogging,
-				timeout = 30,
-				whileDead = true,
-				hideOnEscape = true
-			}
-			StaticPopup_Show("ENABLE_COMBAT_LOGGING")
+	
+	local autoToggle = self:GetSetting("autoCombatLogToggle")
+	local disableReminder = self:GetSetting("disableCombatlogReminder")
+	
+	if isInstance then
+		-- Entering an instance
+		if autoToggle then
+			-- Auto-enable combat logging
+			if not logging then
+				LoggingCombat(1)
+				self:Print("Combat logging enabled (entered instance)")
+				self:DebugPrint("Auto-enabled combat logging")
+			end
+		else
+			-- Auto-toggle disabled, show reminder if logging is off
+			if not logging and not disableReminder then
+				StaticPopupDialogs["CHRONICLE_ENABLE_COMBAT_LOGGING"] = {
+					text = "Combat logging is disabled and you have entered an instance, do you want to enable it?",
+					button1 = "Enable Combat Logs",
+					button2 = "No",
+					OnAccept = ChronicleEnableCombatLogging,
+					timeout = 30,
+					whileDead = true,
+					hideOnEscape = true
+				}
+				StaticPopup_Show("CHRONICLE_ENABLE_COMBAT_LOGGING")
+			end
 		end
-	else 
-		if logging then
-			StaticPopupDialogs["ENABLE_COMBAT_LOGGING"] = {
-				text = "Combat logging is enabled, but you are not in an instance. Do you want to disable it?",
-				button1 = "Disable Combat Logs",
-				button2 = "No",
-				OnAccept = ChronicleDisableCombatLogging,
-				timeout = 30,
-				whileDead = true,
-				hideOnEscape = true
-			}
-			StaticPopup_Show("ENABLE_COMBAT_LOGGING")
+	else
+		-- Leaving an instance
+		if autoToggle then
+			-- Auto-disable combat logging
+			if logging then
+				LoggingCombat(0)
+				self:Print("Combat logging disabled (left instance)")
+				self:DebugPrint("Auto-disabled combat logging")
+			end
+		else
+			-- Auto-toggle disabled, show reminder if logging is still on
+			if logging and not disableReminder then
+				StaticPopupDialogs["CHRONICLE_DISABLE_COMBAT_LOGGING"] = {
+					text = "Combat logging is enabled, but you are not in an instance. Do you want to disable it?",
+					button1 = "Disable Combat Logs",
+					button2 = "No",
+					OnAccept = ChronicleDisableCombatLogging,
+					timeout = 30,
+					whileDead = true,
+					hideOnEscape = true
+				}
+				StaticPopup_Show("CHRONICLE_DISABLE_COMBAT_LOGGING")
+			end
 		end
 	end
 end
@@ -210,6 +250,10 @@ function Chronicle:OnEvent(event, ...)
 		end
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		self:OnPlayerEnteringWorld()
+	elseif event == "ZONE_CHANGED_NEW_AREA" then
+		self:OnInstanceChange()
+	elseif event == "UPDATE_INSTANCE_INFO" then
+		self:OnInstanceChange()
 	elseif event == "RAW_COMBATLOG" then
 		self:RAW_COMBATLOG()
 	elseif event == "PLAYER_LOGIN" then
