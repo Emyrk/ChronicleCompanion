@@ -37,16 +37,18 @@ function Chronicle:InitDeps()
 	if SetAutoloot then
 		self.superWoW = true
 	end
-	
+
+	-- Check if any SuperWoWLogger is available (external or embedded)
+	if RPLL and log_combatant_info then
+		self.superWoWLogger = true
+	end
+
+
 	-- Load embedded SuperWoWLogger if external one isn't loaded
 	if not IsAddOnLoaded("SuperWowCombatLogger") then
 		self:LoadEmbeddedSuperWoWLogger()
 	end
 	
-	-- Check if any SuperWoWLogger is available (external or embedded)
-	if RPLL and log_combatant_info then
-		self.superWoWLogger = true
-	end
 
 	if not self.superWoW then
 		Chronicle:Print("Warning: The SuperWoW mod by Balake is not detected. This mod is required for ChronicleCompanion to work.")
@@ -248,6 +250,11 @@ function Chronicle:OnInstanceChange()
 				StaticPopup_Show("CHRONICLE_DISABLE_COMBAT_LOGGING")
 			end
 		end
+	end
+	
+	-- Close options panel if visible
+	if self.optionsPanel and self.optionsPanel:IsShown() then
+		self.optionsPanel:Hide()
 	end
 end
 

@@ -1025,7 +1025,7 @@ function Chronicle:LoadEmbeddedSuperWoWLogger()
     end
 
     RPLL.ZONE_CHANGED_NEW_AREA = function()
-    	LoggingCombat(IsInInstance("player"))
+    	-- LoggingCombat(IsInInstance("player")) -- handled by chronicle
     	this:grab_unit_information("player")
     	this:RAID_ROSTER_UPDATE()
     	this:PARTY_MEMBERS_CHANGED()
@@ -1034,7 +1034,7 @@ function Chronicle:LoadEmbeddedSuperWoWLogger()
     end
 
     RPLL.UPDATE_INSTANCE_INFO = function()
-    	LoggingCombat(IsInInstance("player"))
+    	-- LoggingCombat(IsInInstance("player")) -- Handled by chronicle
     	this:grab_unit_information("player")
     	this:RAID_ROSTER_UPDATE()
     	this:PARTY_MEMBERS_CHANGED()
