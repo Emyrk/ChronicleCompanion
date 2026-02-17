@@ -39,3 +39,37 @@ function Chronicle:ShowStats()
 	
 	Chronicle:Print("===========================")
 end
+
+
+-- Helpful to check out some events
+-- local f = CreateFrame("Frame")
+
+-- local function RegisterEvent(name)
+--     f:UnregisterAllEvents()
+--     f:RegisterEvent(name)
+--     print("Now listening to:", name)
+-- end
+
+-- SLASH_LOGEVENT1 = "/logevent"
+-- SlashCmdList["LOGEVENT"] = function(msg)
+--     if msg and msg ~= "" then
+--         RegisterEvent(msg)
+--     else
+--         print("Usage: /logevent EVENT_NAME")
+--     end
+-- end
+
+-- f:SetScript("OnEvent", function()
+--     print("Event fired:", event)
+
+--     local i = 1
+--     while _G["arg"..i] ~= nil do
+--         print("Arg", i, "=", tostring(_G["arg"..i]))
+--         i = i + 1
+--     end
+
+--     print("----")
+-- end)
+
+-- -- Default
+-- RegisterEvent("RAW_COMBATLOG")
