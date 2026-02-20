@@ -9,6 +9,7 @@
 
 
 advancedlogging\core.lua
+advancedlogging\units.lua
 
 util.lua
 units.lua

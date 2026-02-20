@@ -17,11 +17,10 @@ local LOG_SEP = "|"
 
 -- Events to listen for
 ChronicleLog.events = {
-    "RAW_COMBATLOG",
-    "UNIT_CASTEVENT",
+    -- "UNIT_CASTEVENT",
     "UNIT_DIED",
-    "PLAYER_REGEN_DISABLED",
-    "PLAYER_REGEN_ENABLED",
+    -- "PLAYER_REGEN_DISABLED",
+    -- "PLAYER_REGEN_ENABLED",
     "AUTO_ATTACK_SELF",   -- Requires CVar NP_EnableAutoAttackEvents = 1
     "AUTO_ATTACK_OTHER",  -- Requires CVar NP_EnableAutoAttackEvents = 1
     "SPELL_HEAL_BY_SELF",  -- Requires CVar NP_EnableSpellHealEvents = 1
@@ -110,6 +109,14 @@ function ChronicleLog:Disable()
     return linesWritten
 end
 
+function ChronicleLog:Toggle()
+    if self.enabled then
+        self:Disable()
+    else
+        self:Enable()
+    end
+end
+
 --- Returns whether combat logging is currently enabled.
 ---@return boolean enabled True if logging is active
 function ChronicleLog:IsEnabled()
@@ -119,6 +126,51 @@ end
 -- =============================================================================
 -- Log Output
 -- =============================================================================
+
+--- Generates a header string with player and version metadata.
+--- Format: HEADER|playerGuid|realm|zone|addonVer|superWowVer|namPowerVer|xp3Ver|wowVer|wowBuild|wowBuildDate
+---@return string header Pipe-delimited header line
+function ChronicleLog:GenerateHeader()
+    -- Player info
+    local _, playerGuid = UnitExists("player")
+    playerGuid = playerGuid or ""
+    local realm = GetRealmName() or ""
+    local zone = GetRealZoneText() or ""
+    
+    -- Addon versions
+    local addonVersion = GetAddOnMetadata("ChronicleCompanion", "Version") or ""
+    local superWowVersion = SUPERWOW_VERSION or ""
+    local namPowerVersion = NAMPOWER_VERSION or ""
+    
+    -- UnitXP3 version (returns build timestamp)
+    local xp3Version = ""
+    local xp3ok, xp3buildTime = pcall(UnitXP, "version", "coffTimeDateStamp")
+    if xp3ok and xp3buildTime then
+        xp3Version = tostring(xp3buildTime)
+    end
+    
+    -- WoW client version
+    local wowVersion, wowBuild, wowBuildDate = GetBuildInfo()
+    wowVersion = wowVersion or ""
+    wowBuild = wowBuild or ""
+    wowBuildDate = wowBuildDate or ""
+    
+    local parts = {
+        "HEADER",
+        playerGuid,
+        realm,
+        zone,
+        addonVersion,
+        superWowVersion,
+        namPowerVersion,
+        xp3Version,
+        wowVersion,
+        wowBuild,
+        wowBuildDate
+    }
+    
+    return table.concat(parts, LOG_SEP)
+end
 
 --- Formats a log line and appends it to the in-memory buffer.
 --- Output format: TIMESTAMP|EVENT_TYPE|field1|field2|...
@@ -151,24 +203,39 @@ function ChronicleLog:GetBufferSize()
 end
 
 --- Writes the in-memory buffer to a file and clears the buffer.
---- Uses ExportFile to write to ChronicleLog.txt in the WoW directory.
---- Returns the number of lines written.
----@return number linesWritten Number of lines written to file
+--- Appends to existing file content (reads via ImportFile first).
+--- Filename: Chronicle_<CharacterName>.txt
+---@return number linesWritten Number of new lines written
 function ChronicleLog:FlushToFile()
     if self.bufferSize == 0 then
         return 0
     end
     
-    -- Join all lines with newlines
-    local content = table.concat(self.buffer, "\n")
+    -- Generate filename based on character name
+    local playerName = UnitName("player") or "Unknown"
+    local filename = "Chronicle_" .. playerName .. ".txt"
     
-    -- Generate filename with timestamp
-    local filename = "ChronicleLog_" .. date("%Y%m%d_%H%M%S") .. ".txt"
+    -- Read existing file content
+    local existingContent = ""
+    if ImportFile then
+        existingContent = ImportFile(filename) or ""
+    end
     
-    -- Write to file using SuperWoW's ExportFile
+    -- Join new lines with newlines
+    local newContent = table.concat(self.buffer, "\n")
+    
+    -- Append new content (add newline separator if existing content exists)
+    local finalContent
+    if existingContent ~= "" then
+        finalContent = existingContent .. "\n" .. newContent
+    else
+        finalContent = newContent
+    end
+    
+    -- Write combined content to file
     if ExportFile then
-        ExportFile(filename, content)
-        Chronicle:Print("Wrote " .. self.bufferSize .. " lines to " .. filename)
+        ExportFile(filename, finalContent)
+        Chronicle:Print("Appended " .. self.bufferSize .. " lines to " .. filename)
     else
         Chronicle:Print("ExportFile not available (requires SuperWoW)")
     end
@@ -181,15 +248,6 @@ end
 -- =============================================================================
 -- Event Handlers
 -- =============================================================================
-
---- Handles RAW_COMBATLOG events.
---- Called for every combat log message from the game.
---- Writes a RAW event with the original event name and full text.
----@param eventName string Original event name (e.g., "CHAT_MSG_SPELL_SELF_DAMAGE")
----@param text string Event text with embedded GUIDs
-function ChronicleLog:RAW_COMBATLOG(eventName, text)
-    self:Write("RAW", eventName, text)
-end
 
 --- Handles UNIT_CASTEVENT events.
 --- Called when a unit starts, finishes, fails, or channels a cast.
@@ -209,6 +267,7 @@ end
 --- Writes a DEATH event with the unit's GUID.
 ---@param guid string GUID of the unit that died
 function ChronicleLog:UNIT_DIED(guid)
+    self:CheckUnit(guid)
     self:Write("DEATH", guid)
 end
 
@@ -240,6 +299,8 @@ end
 ---@param totalAbsorb number Total damage absorbed
 ---@param totalResist number Total damage resisted
 function ChronicleLog:AUTO_ATTACK_SELF(attackerGuid, targetGuid, totalDamage, hitInfo, victimState, subDamageCount, blockedAmount, totalAbsorb, totalResist)
+    self:CheckUnit(attackerGuid)
+    self:CheckUnit(targetGuid)
     self:Write("SWING", attackerGuid, targetGuid, totalDamage, hitInfo, victimState, subDamageCount, blockedAmount, totalAbsorb, totalResist)
 end
 
@@ -258,6 +319,8 @@ end
 ---@param totalAbsorb number Total damage absorbed
 ---@param totalResist number Total damage resisted
 function ChronicleLog:AUTO_ATTACK_OTHER(attackerGuid, targetGuid, totalDamage, hitInfo, victimState, subDamageCount, blockedAmount, totalAbsorb, totalResist)
+    self:CheckUnit(attackerGuid)
+    self:CheckUnit(targetGuid)
     self:Write("SWING", attackerGuid, targetGuid, totalDamage, hitInfo, victimState, subDamageCount, blockedAmount, totalAbsorb, totalResist)
 end
 
@@ -290,6 +353,8 @@ end
 ---@param critical number 1 if critical heal, 0 otherwise
 ---@param periodic number 1 if from periodic aura (HoT tick), 0 otherwise
 function ChronicleLog:SPELL_HEAL_BY_OTHER(targetGuid, casterGuid, spellId, amount, critical, periodic)
+    self:CheckUnit(targetGuid)
+    self:CheckUnit(casterGuid)
     self:Write("HEAL", targetGuid, casterGuid, spellId, amount, critical, periodic)
 end
 
@@ -306,6 +371,8 @@ end
 ---@param critical number 1 if critical heal, 0 otherwise
 ---@param periodic number 1 if from periodic aura (HoT tick), 0 otherwise
 function ChronicleLog:SPELL_HEAL_ON_SELF(targetGuid, casterGuid, spellId, amount, critical, periodic)
+    self:CheckUnit(targetGuid)
+    self:CheckUnit(casterGuid)
     self:Write("HEAL", targetGuid, casterGuid, spellId, amount, critical, periodic)
 end
 
@@ -323,7 +390,8 @@ end
 ---@param amount number Amount of power restored
 ---@param periodic number 1 if from periodic aura, 0 otherwise
 function ChronicleLog:SPELL_ENERGIZE_BY_SELF(targetGuid, casterGuid, spellId, powerType, amount, periodic)
-    self:Write("ENERGIZE", targetGuid, casterGuid, spellId, powerType, amount, periodic)
+    -- Handled by others
+    -- self:Write("ENERGIZE", targetGuid, casterGuid, spellId, powerType, amount, periodic)
 end
 
 --- Handles SPELL_ENERGIZE_BY_OTHER events.
@@ -339,6 +407,8 @@ end
 ---@param amount number Amount of power restored
 ---@param periodic number 1 if from periodic aura, 0 otherwise
 function ChronicleLog:SPELL_ENERGIZE_BY_OTHER(targetGuid, casterGuid, spellId, powerType, amount, periodic)
+    self:CheckUnit(targetGuid)
+    self:CheckUnit(casterGuid)
     self:Write("ENERGIZE", targetGuid, casterGuid, spellId, powerType, amount, periodic)
 end
 
@@ -356,6 +426,8 @@ end
 ---@param amount number Amount of power restored
 ---@param periodic number 1 if from periodic aura, 0 otherwise
 function ChronicleLog:SPELL_ENERGIZE_ON_SELF(targetGuid, casterGuid, spellId, powerType, amount, periodic)
+    self:CheckUnit(targetGuid)
+    self:CheckUnit(casterGuid)
     self:Write("ENERGIZE", targetGuid, casterGuid, spellId, powerType, amount, periodic)
 end
 
@@ -370,6 +442,8 @@ end
 ---@param spellId number Spell ID that missed
 ---@param missInfo number Miss type (see SpellMissInfo constants)
 function ChronicleLog:SPELL_MISS_SELF(casterGuid, targetGuid, spellId, missInfo)
+    self:CheckUnit(casterGuid)
+    self:CheckUnit(targetGuid)
     self:Write("MISS", casterGuid, targetGuid, spellId, missInfo)
 end
 
@@ -384,6 +458,8 @@ end
 ---@param spellId number Spell ID that missed
 ---@param missInfo number Miss type (see SpellMissInfo constants)
 function ChronicleLog:SPELL_MISS_OTHER(casterGuid, targetGuid, spellId, missInfo)
+    self:CheckUnit(casterGuid)
+    self:CheckUnit(targetGuid)
     self:Write("MISS", casterGuid, targetGuid, spellId, missInfo)
 end
 
@@ -403,6 +479,8 @@ end
 ---@param durationMs number Spell duration in milliseconds (includes client modifiers if you're caster)
 ---@param auraCapStatus number Bitfield: 1=buff bar full, 2=debuff bar full, 3=both
 function ChronicleLog:AURA_CAST_ON_SELF(spellId, casterGuid, targetGuid, effect, effectAuraName, effectAmplitude, effectMiscValue, durationMs, auraCapStatus)
+    self:CheckUnit(casterGuid)
+    self:CheckUnit(targetGuid)
     self:Write("AURA_CAST", spellId, casterGuid, targetGuid, effect, effectAuraName, effectAmplitude, effectMiscValue, durationMs, auraCapStatus)
 end
 
@@ -421,6 +499,8 @@ end
 ---@param durationMs number Spell duration in milliseconds (includes client modifiers if you're caster)
 ---@param auraCapStatus number Bitfield: 1=buff bar full, 2=debuff bar full, 3=both
 function ChronicleLog:AURA_CAST_ON_OTHER(spellId, casterGuid, targetGuid, effect, effectAuraName, effectAmplitude, effectMiscValue, durationMs, auraCapStatus)
+    self:CheckUnit(casterGuid)
+    self:CheckUnit(targetGuid)
     self:Write("AURA_CAST", spellId, casterGuid, targetGuid, effect, effectAuraName, effectAmplitude, effectMiscValue, durationMs, auraCapStatus)
 end
 
@@ -463,6 +543,7 @@ end
 ---@param auraSlot number Raw 0-based aura slot index (0-31 for buffs)
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:BUFF_ADDED_SELF(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:CheckUnit(guid)
     self:Write("BUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
@@ -477,6 +558,7 @@ end
 ---@param auraSlot number Raw 0-based aura slot index (0-31 for buffs)
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:BUFF_REMOVED_SELF(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:CheckUnit(guid)
     self:Write("BUFF_REM", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
@@ -491,6 +573,7 @@ end
 ---@param auraSlot number Raw 0-based aura slot index (0-31 for buffs)
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:BUFF_ADDED_OTHER(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:CheckUnit(guid)
     self:Write("BUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
@@ -505,6 +588,7 @@ end
 ---@param auraSlot number Raw 0-based aura slot index (0-31 for buffs)
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:BUFF_REMOVED_OTHER(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:CheckUnit(guid)
     self:Write("BUFF_REM", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
@@ -519,6 +603,7 @@ end
 ---@param auraSlot number Raw 0-based aura slot index (32-47 for debuffs)
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:DEBUFF_ADDED_SELF(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:CheckUnit(guid)
     self:Write("DEBUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
@@ -533,6 +618,7 @@ end
 ---@param auraSlot number Raw 0-based aura slot index (32-47 for debuffs)
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:DEBUFF_REMOVED_SELF(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:CheckUnit(guid)
     self:Write("DEBUFF_REM", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
@@ -547,6 +633,7 @@ end
 ---@param auraSlot number Raw 0-based aura slot index (32-47 for debuffs)
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:DEBUFF_ADDED_OTHER(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:CheckUnit(guid)
     self:Write("DEBUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
@@ -561,6 +648,7 @@ end
 ---@param auraSlot number Raw 0-based aura slot index (32-47 for debuffs)
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:DEBUFF_REMOVED_OTHER(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:CheckUnit(guid)
     self:Write("DEBUFF_REM", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
@@ -580,6 +668,8 @@ end
 ---@param spellSchool number Damage school
 ---@param effectAuraStr string Comma-separated "effect1,effect2,effect3,auraType"
 function ChronicleLog:SPELL_DAMAGE_EVENT_SELF(targetGuid, casterGuid, spellId, amount, mitigationStr, hitInfo, spellSchool, effectAuraStr)
+    self:CheckUnit(targetGuid)
+    self:CheckUnit(casterGuid)
     self:Write("SPELL_DMG", targetGuid, casterGuid, spellId, amount, mitigationStr, hitInfo, spellSchool, effectAuraStr)
 end
 
@@ -599,6 +689,8 @@ end
 ---@param spellSchool number Damage school
 ---@param effectAuraStr string Comma-separated "effect1,effect2,effect3,auraType"
 function ChronicleLog:SPELL_DAMAGE_EVENT_OTHER(targetGuid, casterGuid, spellId, amount, mitigationStr, hitInfo, spellSchool, effectAuraStr)
+    self:CheckUnit(targetGuid)
+    self:CheckUnit(casterGuid)
     self:Write("SPELL_DMG", targetGuid, casterGuid, spellId, amount, mitigationStr, hitInfo, spellSchool, effectAuraStr)
 end
 
@@ -608,6 +700,7 @@ end
 ---@param casterGuid string GUID of the caster (active player)
 ---@param delayMs number Delay in milliseconds
 function ChronicleLog:SPELL_DELAYED_SELF(casterGuid, delayMs)
+    self:CheckUnit(casterGuid)
     self:Write("SPELL_DELAY", casterGuid, delayMs)
 end
 
@@ -618,6 +711,7 @@ end
 ---@param casterGuid string GUID of the caster
 ---@param delayMs number Delay in milliseconds
 function ChronicleLog:SPELL_DELAYED_OTHER(casterGuid, delayMs)
+    self:CheckUnit(casterGuid)
     self:Write("SPELL_DELAY", casterGuid, delayMs)
 end
 
@@ -629,6 +723,7 @@ end
 ---@param targetGuid string Target GUID or "0x0000000000000000" if none
 ---@param durationMs number Channel duration in milliseconds
 function ChronicleLog:SPELL_CHANNEL_START(spellId, targetGuid, durationMs)
+    self:CheckUnit(targetGuid)
     self:Write("CHANNEL_START", spellId, targetGuid, durationMs)
 end
 
@@ -640,6 +735,7 @@ end
 ---@param targetGuid string Target GUID or "0x0000000000000000" if none
 ---@param remainingMs number Remaining channel time in milliseconds
 function ChronicleLog:SPELL_CHANNEL_UPDATE(spellId, targetGuid, remainingMs)
+    self:CheckUnit(targetGuid)
     self:Write("CHANNEL_UPDATE", spellId, targetGuid, remainingMs)
 end
 
@@ -661,6 +757,7 @@ end
 ---@param casterGuid string GUID of the caster
 ---@param spellId number Spell ID that failed
 function ChronicleLog:SPELL_FAILED_OTHER(casterGuid, spellId)
+    self:CheckUnit(casterGuid)
     self:Write("SPELL_FAIL", casterGuid, spellId)
 end
 
@@ -677,6 +774,8 @@ end
 ---@param numTargetsHit number Number of targets hit
 ---@param numTargetsMissed number Number of targets missed
 function ChronicleLog:SPELL_GO_SELF(itemId, spellId, casterGuid, targetGuid, castFlags, numTargetsHit, numTargetsMissed)
+    self:CheckUnit(casterGuid)
+    self:CheckUnit(targetGuid)
     self:Write("SPELL_GO", itemId, spellId, casterGuid, targetGuid, castFlags, numTargetsHit, numTargetsMissed)
 end
 
@@ -693,6 +792,8 @@ end
 ---@param numTargetsHit number Number of targets hit
 ---@param numTargetsMissed number Number of targets missed
 function ChronicleLog:SPELL_GO_OTHER(itemId, spellId, casterGuid, targetGuid, castFlags, numTargetsHit, numTargetsMissed)
+    self:CheckUnit(casterGuid)
+    self:CheckUnit(targetGuid)
     self:Write("SPELL_GO", itemId, spellId, casterGuid, targetGuid, castFlags, numTargetsHit, numTargetsMissed)
 end
 
@@ -710,6 +811,8 @@ end
 ---@param duration number Channel duration in ms (only for channeling spells, 0 otherwise)
 ---@param spellType number 0=Normal, 1=Channeling, 2=Autorepeating
 function ChronicleLog:SPELL_START_SELF(itemId, spellId, casterGuid, targetGuid, castFlags, castTime, duration, spellType)
+    self:CheckUnit(casterGuid)
+    self:CheckUnit(targetGuid)
     self:Write("SPELL_START", itemId, spellId, casterGuid, targetGuid, castFlags, castTime, duration, spellType)
 end
 
@@ -729,5 +832,7 @@ end
 ---@param duration number Channel duration in ms (only for channeling spells, 0 otherwise)
 ---@param spellType number 0=Normal, 1=Channeling, 2=Autorepeating
 function ChronicleLog:SPELL_START_OTHER(itemId, spellId, casterGuid, targetGuid, castFlags, castTime, duration, spellType)
+    self:CheckUnit(casterGuid)
+    self:CheckUnit(targetGuid)
     self:Write("SPELL_START", itemId, spellId, casterGuid, targetGuid, castFlags, castTime, duration, spellType)
 end
