@@ -56,8 +56,6 @@ ChronicleLog.events = {
     "SPELL_START_SELF",            -- Requires CVar NP_EnableSpellStartEvents = 1
     "SPELL_START_OTHER",           -- Requires CVar NP_EnableSpellStartEvents = 1
 
-    "ZONE_CHANGED_NEW_AREA",       -- Custom event to trigger unit purge on zone change
-    
     -- Chat events
     "CHAT_MSG_LOOT",               -- Loot messages (arg1 = message)
     "CHAT_MSG_SYSTEM",             -- System messages (arg1 = message) - used for trade detection
@@ -79,10 +77,19 @@ function ChronicleLog:Init()
     
     self.frame = CreateFrame("Frame", "ChronicleLogFrame")
     self.frame:SetScript("OnEvent", function()
+        -- Always process zone changes (for auto-enable/disable even when logging is off)
+        if event == "ZONE_CHANGED_NEW_AREA" then
+            ChronicleLog:ZONE_CHANGED_NEW_AREA()
+            return
+        end
+        -- Other events only when enabled
         if ChronicleLog.enabled and ChronicleLog[event] then
             ChronicleLog[event](ChronicleLog, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
         end
     end)
+    
+    -- Always register zone event (needed for auto-enable even when logging is off)
+    self.frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 end
 
 --- Enables combat logging and registers all events.
@@ -270,11 +277,8 @@ end
 -- =============================================================================
 
 --- Handles ZONE_CHANGED_NEW_AREA events every time the zone changes.
---- Logs header and zone info, then purges the units database.
+--- Handles auto-enable/disable and reminder popups, then logs zone info.
 function ChronicleLog:ZONE_CHANGED_NEW_AREA()
-    -- Log header with player/addon/version info
-    self:WriteHeader()
-    
     -- Get zone name and find instance ID from saved instances
     local zoneName = GetRealZoneText() or ""
     local zoneLower = strlower(zoneName)
@@ -290,15 +294,84 @@ function ChronicleLog:ZONE_CHANGED_NEW_AREA()
     
     -- IsInInstance returns: inInstance (1/nil), instanceType (string)
     local inInstance, instanceType = IsInInstance()
-    inInstance = inInstance and 1 or 0
-    instanceType = instanceType or "none"
+    local isInInstance = inInstance and true or false
+    local isRaid = instanceType == "raid"
+    local isDungeon = instanceType == "party"
     
-    local isGhost = UnitIsGhost("player") and 1 or 0
+    -- Check auto-enable settings
+    local autoEnableRaid = self:GetSetting("autoEnableInRaid")
+    local autoEnableDungeon = self:GetSetting("autoEnableInDungeon")
+    local showReminder = self:GetSetting("showLogReminder")
+    local logging = self:IsEnabled()
     
-    self:Write("ZONE_INFO", zoneName, instanceId, inInstance, instanceType, isGhost)
+    -- Debug output
+    Chronicle:Print("Zone: " .. zoneName .. ", inInstance: " .. tostring(isInInstance) .. ", type: " .. tostring(instanceType))
+    Chronicle:Print("autoRaid: " .. tostring(autoEnableRaid) .. ", autoDungeon: " .. tostring(autoEnableDungeon) .. ", showReminder: " .. tostring(showReminder) .. ", logging: " .. tostring(logging))
     
-    -- Purge units database (all GUIDs need re-logging in new zone)
-    self:PurgeUnits()
+    if isInInstance then
+        -- Entering an instance
+        local shouldAutoEnable = (isRaid and autoEnableRaid) or (isDungeon and autoEnableDungeon)
+        
+        if shouldAutoEnable then
+            if not logging then
+                self:Enable()
+                Chronicle:Print("ChronicleLog enabled (entered " .. (isRaid and "raid" or "dungeon") .. ")")
+            end
+        elseif showReminder and not logging then
+            -- Show reminder popup
+            StaticPopupDialogs["CHRONICLELOG_ENABLE_REMINDER"] = {
+                text = "You entered an instance but ChronicleLog is disabled. Enable logging?",
+                button1 = "Enable",
+                button2 = "No",
+                OnAccept = function()
+                    ChronicleLog:Enable()
+                    Chronicle:Print("ChronicleLog enabled.")
+                end,
+                timeout = 30,
+                whileDead = true,
+                hideOnEscape = true,
+            }
+            StaticPopup_Show("CHRONICLELOG_ENABLE_REMINDER")
+        end
+    else
+        -- Leaving an instance
+        local wasAutoEnabled = (autoEnableRaid or autoEnableDungeon)
+        
+        if wasAutoEnabled and logging then
+            self:Disable()
+            Chronicle:Print("ChronicleLog disabled (left instance)")
+        elseif showReminder and logging then
+            -- Show reminder popup
+            StaticPopupDialogs["CHRONICLELOG_DISABLE_REMINDER"] = {
+                text = "You left the instance but ChronicleLog is still enabled. Disable logging?",
+                button1 = "Disable",
+                button2 = "No",
+                OnAccept = function()
+                    ChronicleLog:Disable()
+                    Chronicle:Print("ChronicleLog disabled.")
+                end,
+                timeout = 30,
+                whileDead = true,
+                hideOnEscape = true,
+            }
+            StaticPopup_Show("CHRONICLELOG_DISABLE_REMINDER")
+        end
+    end
+    
+    -- Only log zone info if enabled
+    if self:IsEnabled() then
+        -- Log header with player/addon/version info
+        self:WriteHeader()
+        
+        local inInstanceNum = isInInstance and 1 or 0
+        instanceType = instanceType or "none"
+        local isGhost = UnitIsGhost("player") and 1 or 0
+        
+        self:Write("ZONE_INFO", zoneName, instanceId, inInstanceNum, instanceType, isGhost)
+        
+        -- Purge units database (all GUIDs need re-logging in new zone)
+        self:PurgeUnits()
+    end
 end
 
 --- Handles UNIT_CASTEVENT events.
