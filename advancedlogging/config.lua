@@ -4,8 +4,8 @@
 
 -- Default settings
 local DEFAULTS = {
-    autoEnableInRaid = false,
-    autoEnableInDungeon = false,
+    autoEnableInRaid = true,
+    autoEnableInDungeon = true,
     showLogReminder = true,
     rangeDefault = 40,
     rangeDungeon = 100,
@@ -74,7 +74,7 @@ end
 function ChronicleLog:CreateOptionsPanel()
     local panel = CreateFrame("Frame", "ChronicleLogOptionsPanel", UIParent)
     panel:SetWidth(520)
-    panel:SetHeight(450)
+    panel:SetHeight(380)
     panel:SetPoint("CENTER", 0, 0)
     panel:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -100,106 +100,72 @@ function ChronicleLog:CreateOptionsPanel()
     subtitle:SetPoint("TOP", title, "BOTTOM", 0, -2)
     subtitle:SetText("Advanced combat logging settings")
     
-    local yOffset = -50
+    -- Layout constants
     local leftCol = 20
-    local midCol = 270
+    local rightCol = 265
+    local yStart = -50
+    local yLeft = yStart
+    local yRight = yStart
     
-    -- ===================
-    -- Status Row 1: Logging + Toggle | Buffer
-    -- ===================
+    -- =========================================================================
+    -- SECTION 1: Status (Left Column)
+    -- =========================================================================
     local statusLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    statusLabel:SetPoint("TOPLEFT", leftCol, yOffset)
+    statusLabel:SetPoint("TOPLEFT", leftCol, yLeft)
     statusLabel:SetText("Logging:")
     local statusText = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     statusText:SetPoint("LEFT", statusLabel, "RIGHT", 5, 0)
     panel.statusText = statusText
     
     local toggleButton = CreateFrame("Button", "ChronicleLogToggleButton", panel, "UIPanelButtonTemplate")
-    toggleButton:SetWidth(60)
+    toggleButton:SetWidth(55)
     toggleButton:SetHeight(18)
-    toggleButton:SetPoint("LEFT", statusLabel, "RIGHT", 50, 0)
+    toggleButton:SetPoint("LEFT", statusLabel, "RIGHT", 55, 0)
     toggleButton:SetText("Toggle")
     toggleButton:SetScript("OnClick", function()
         if ChronicleLog:IsEnabled() then ChronicleLog:Disable() else ChronicleLog:Enable() end
         ChronicleLog:RefreshOptionsPanel()
     end)
     
-    local bufferLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    bufferLabel:SetPoint("TOPLEFT", midCol, yOffset)
-    bufferLabel:SetText("Buffer:")
-    local bufferText = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    bufferText:SetPoint("LEFT", bufferLabel, "RIGHT", 5, 0)
-    panel.bufferText = bufferText
+    yLeft = yLeft - 18
     
-    yOffset = yOffset - 18
-    
-    -- ===================
-    -- Status Row 2: Range | Instance
-    -- ===================
     local rangeLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    rangeLabel:SetPoint("TOPLEFT", leftCol, yOffset)
+    rangeLabel:SetPoint("TOPLEFT", leftCol, yLeft)
     rangeLabel:SetText("Range:")
     local rangeText = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     rangeText:SetPoint("LEFT", rangeLabel, "RIGHT", 5, 0)
     panel.rangeText = rangeText
     
+    yLeft = yLeft - 16
+    
+    local bufferLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    bufferLabel:SetPoint("TOPLEFT", leftCol, yLeft)
+    bufferLabel:SetText("Buffer:")
+    local bufferText = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    bufferText:SetPoint("LEFT", bufferLabel, "RIGHT", 5, 0)
+    panel.bufferText = bufferText
+    
+    yLeft = yLeft - 16
+    
     local instanceLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    instanceLabel:SetPoint("TOPLEFT", midCol, yOffset)
+    instanceLabel:SetPoint("TOPLEFT", leftCol, yLeft)
     instanceLabel:SetText("Instance:")
     local instanceText = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     instanceText:SetPoint("LEFT", instanceLabel, "RIGHT", 5, 0)
     panel.instanceText = instanceText
     
-    yOffset = yOffset - 22
+    yLeft = yLeft - 22
     
-    -- ===================
-    -- Version Info (single row, 4 items)
-    -- ===================
-    local versionHeader = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    versionHeader:SetPoint("TOPLEFT", leftCol, yOffset)
-    versionHeader:SetText("Version Info")
-    yOffset = yOffset - 16
-    
-    local addonVerLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    addonVerLabel:SetPoint("TOPLEFT", leftCol, yOffset)
-    addonVerLabel:SetText("Addon:")
-    local addonVerText = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    addonVerText:SetPoint("LEFT", addonVerLabel, "RIGHT", 3, 0)
-    panel.addonVerText = addonVerText
-    
-    local swVerLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    swVerLabel:SetPoint("TOPLEFT", leftCol + 100, yOffset)
-    swVerLabel:SetText("SuperWoW:")
-    local swVerText = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    swVerText:SetPoint("LEFT", swVerLabel, "RIGHT", 3, 0)
-    panel.swVerText = swVerText
-    
-    local xp3VerLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    xp3VerLabel:SetPoint("TOPLEFT", leftCol + 220, yOffset)
-    xp3VerLabel:SetText("UnitXP3:")
-    local xp3VerText = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    xp3VerText:SetPoint("LEFT", xp3VerLabel, "RIGHT", 3, 0)
-    panel.xp3VerText = xp3VerText
-    
-    local npVerLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    npVerLabel:SetPoint("TOPLEFT", leftCol + 360, yOffset)
-    npVerLabel:SetText("Nampower:")
-    local npVerText = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    npVerText:SetPoint("LEFT", npVerLabel, "RIGHT", 3, 0)
-    panel.npVerText = npVerText
-    
-    yOffset = yOffset - 20
-
-    -- ===================
-    -- Automatic Combat Logger
-    -- ===================
+    -- =========================================================================
+    -- SECTION 2: Automatic Combat Logger (Right Column)
+    -- =========================================================================
     local autoHeader = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    autoHeader:SetPoint("TOPLEFT", leftCol, yOffset)
+    autoHeader:SetPoint("TOPLEFT", rightCol, yRight)
     autoHeader:SetText("Automatic Combat Logger")
-    yOffset = yOffset - 20
+    yRight = yRight - 18
     
     local autoRaidCheck = CreateFrame("CheckButton", "ChronicleLogAutoRaid", panel, "UICheckButtonTemplate")
-    autoRaidCheck:SetPoint("TOPLEFT", leftCol, yOffset)
+    autoRaidCheck:SetPoint("TOPLEFT", rightCol, yRight)
     getglobal(autoRaidCheck:GetName() .. "Text"):SetText("Auto-enable in Raids")
     autoRaidCheck:SetScript("OnClick", function()
         ChronicleLog:SetSetting("autoEnableInRaid", this:GetChecked() == 1)
@@ -207,8 +173,10 @@ function ChronicleLog:CreateOptionsPanel()
     end)
     panel.autoRaidCheck = autoRaidCheck
     
+    yRight = yRight - 20
+    
     local autoDungeonCheck = CreateFrame("CheckButton", "ChronicleLogAutoDungeon", panel, "UICheckButtonTemplate")
-    autoDungeonCheck:SetPoint("TOPLEFT", midCol, yOffset)
+    autoDungeonCheck:SetPoint("TOPLEFT", rightCol, yRight)
     getglobal(autoDungeonCheck:GetName() .. "Text"):SetText("Auto-enable in Dungeons")
     autoDungeonCheck:SetScript("OnClick", function()
         ChronicleLog:SetSetting("autoEnableInDungeon", this:GetChecked() == 1)
@@ -216,40 +184,89 @@ function ChronicleLog:CreateOptionsPanel()
     end)
     panel.autoDungeonCheck = autoDungeonCheck
     
-    yOffset = yOffset - 22
+    yRight = yRight - 20
     
     local reminderCheck = CreateFrame("CheckButton", "ChronicleLogReminder", panel, "UICheckButtonTemplate")
-    reminderCheck:SetPoint("TOPLEFT", leftCol, yOffset)
-    getglobal(reminderCheck:GetName() .. "Text"):SetText("Show Combat Log Reminder")
+    reminderCheck:SetPoint("TOPLEFT", rightCol, yRight)
+    getglobal(reminderCheck:GetName() .. "Text"):SetText("Show Reminder")
     reminderCheck:SetScript("OnClick", function()
         ChronicleLog:SetSetting("showLogReminder", this:GetChecked() == 1)
     end)
-    local reminderDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    reminderDesc:SetPoint("LEFT", reminderCheck, "RIGHT", 155, 0)
-    reminderDesc:SetText("(disabled when auto-enable is on)")
-    reminderDesc:SetTextColor(0.5, 0.5, 0.5)
     panel.reminderCheck = reminderCheck
+    
+    local reminderDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    reminderDesc:SetPoint("TOPLEFT", rightCol + 130, yRight + 5)
+    reminderDesc:SetText("(disabled when auto is on)")
+    reminderDesc:SetTextColor(0.5, 0.5, 0.5)
     panel.reminderDesc = reminderDesc
     
-    yOffset = yOffset - 28
+    yRight = yRight - 32
     
-    -- ===================
-    -- Combat Log Range (3 sliders side by side)
-    -- ===================
+    -- Sync columns
+    local yRow2 = math.min(yLeft, yRight)
+    yLeft = yRow2
+    yRight = yRow2
+    
+    -- =========================================================================
+    -- SECTION 3: Versions (Left Column)
+    -- =========================================================================
+    local versionHeader = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    versionHeader:SetPoint("TOPLEFT", leftCol, yLeft)
+    versionHeader:SetText("Version Info")
+    yLeft = yLeft - 16
+    
+    local addonVerLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    addonVerLabel:SetPoint("TOPLEFT", leftCol, yLeft)
+    addonVerLabel:SetText("Addon:")
+    local addonVerText = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    addonVerText:SetPoint("LEFT", addonVerLabel, "RIGHT", 5, 0)
+    panel.addonVerText = addonVerText
+    
+    yLeft = yLeft - 14
+    
+    local swVerLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    swVerLabel:SetPoint("TOPLEFT", leftCol, yLeft)
+    swVerLabel:SetText("SuperWoW:")
+    local swVerText = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    swVerText:SetPoint("LEFT", swVerLabel, "RIGHT", 5, 0)
+    panel.swVerText = swVerText
+    
+    yLeft = yLeft - 14
+    
+    local xp3VerLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    xp3VerLabel:SetPoint("TOPLEFT", leftCol, yLeft)
+    xp3VerLabel:SetText("UnitXP3:")
+    local xp3VerText = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    xp3VerText:SetPoint("LEFT", xp3VerLabel, "RIGHT", 5, 0)
+    panel.xp3VerText = xp3VerText
+    
+    yLeft = yLeft - 14
+    
+    local npVerLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    npVerLabel:SetPoint("TOPLEFT", leftCol, yLeft)
+    npVerLabel:SetText("Nampower:")
+    local npVerText = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    npVerText:SetPoint("LEFT", npVerLabel, "RIGHT", 5, 0)
+    panel.npVerText = npVerText
+    
+    yLeft = yLeft - 22
+    
+    -- =========================================================================
+    -- SECTION 4: Combat Log Range Sliders (Right Column)
+    -- =========================================================================
     local rangeHeader = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    rangeHeader:SetPoint("TOPLEFT", leftCol, yOffset)
+    rangeHeader:SetPoint("TOPLEFT", rightCol, yRight)
     rangeHeader:SetText("Combat Log Range")
     local rangeHeaderDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    rangeHeaderDesc:SetPoint("LEFT", rangeHeader, "RIGHT", 10, 0)
-    rangeHeaderDesc:SetText("(higher = more complete logs)")
+    rangeHeaderDesc:SetPoint("LEFT", rangeHeader, "RIGHT", 5, 0)
+    rangeHeaderDesc:SetText("(higher = more complete)")
     rangeHeaderDesc:SetTextColor(0.5, 0.5, 0.5)
-    yOffset = yOffset - 35
+    yRight = yRight - 28
     
-    local sliderWidth = 140
-    local sliderSpacing = 160
+    local sliderWidth = 200
     
     local defaultRangeSlider = CreateFrame("Slider", "ChronicleLogRangeDefault", panel, "OptionsSliderTemplate")
-    defaultRangeSlider:SetPoint("TOPLEFT", leftCol + 10, yOffset)
+    defaultRangeSlider:SetPoint("TOPLEFT", rightCol, yRight)
     defaultRangeSlider:SetWidth(sliderWidth)
     defaultRangeSlider:SetMinMaxValues(10, 200)
     defaultRangeSlider:SetValueStep(10)
@@ -260,12 +277,13 @@ function ChronicleLog:CreateOptionsPanel()
         local value = math.floor(this:GetValue())
         ChronicleLog:SetSetting("rangeDefault", value)
         getglobal(this:GetName() .. "Text"):SetText("Default: " .. value)
-        ChronicleLog:RefreshOptionsPanel()
     end)
     panel.defaultRangeSlider = defaultRangeSlider
     
+    yRight = yRight - 32
+    
     local dungeonRangeSlider = CreateFrame("Slider", "ChronicleLogRangeDungeon", panel, "OptionsSliderTemplate")
-    dungeonRangeSlider:SetPoint("TOPLEFT", leftCol + 10 + sliderSpacing, yOffset)
+    dungeonRangeSlider:SetPoint("TOPLEFT", rightCol, yRight)
     dungeonRangeSlider:SetWidth(sliderWidth)
     dungeonRangeSlider:SetMinMaxValues(10, 200)
     dungeonRangeSlider:SetValueStep(10)
@@ -276,12 +294,13 @@ function ChronicleLog:CreateOptionsPanel()
         local value = math.floor(this:GetValue())
         ChronicleLog:SetSetting("rangeDungeon", value)
         getglobal(this:GetName() .. "Text"):SetText("Dungeon: " .. value)
-        ChronicleLog:RefreshOptionsPanel()
     end)
     panel.dungeonRangeSlider = dungeonRangeSlider
     
+    yRight = yRight - 32
+    
     local raidRangeSlider = CreateFrame("Slider", "ChronicleLogRangeRaid", panel, "OptionsSliderTemplate")
-    raidRangeSlider:SetPoint("TOPLEFT", leftCol + 10 + sliderSpacing * 2, yOffset)
+    raidRangeSlider:SetPoint("TOPLEFT", rightCol, yRight)
     raidRangeSlider:SetWidth(sliderWidth)
     raidRangeSlider:SetMinMaxValues(10, 200)
     raidRangeSlider:SetValueStep(10)
@@ -292,34 +311,40 @@ function ChronicleLog:CreateOptionsPanel()
         local value = math.floor(this:GetValue())
         ChronicleLog:SetSetting("rangeRaid", value)
         getglobal(this:GetName() .. "Text"):SetText("Raid: " .. value)
-        ChronicleLog:RefreshOptionsPanel()
     end)
     panel.raidRangeSlider = raidRangeSlider
     
-    yOffset = yOffset - 45
-
-    -- ===================
-    -- Debug Section
-    -- ===================
+    yRight = yRight - 30
+    
+    -- Sync columns
+    local yRow3 = math.min(yLeft, yRight)
+    yLeft = yRow3
+    yRight = yRow3
+    
+    -- =========================================================================
+    -- SECTION 5: Debug (Left Column)
+    -- =========================================================================
     local debugHeader = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    debugHeader:SetPoint("TOPLEFT", leftCol, yOffset)
+    debugHeader:SetPoint("TOPLEFT", leftCol, yLeft)
     debugHeader:SetText("Debug")
-    yOffset = yOffset - 22
+    yLeft = yLeft - 18
     
     local debugCheck = CreateFrame("CheckButton", "ChronicleLogDebug", panel, "UICheckButtonTemplate")
-    debugCheck:SetPoint("TOPLEFT", leftCol, yOffset)
+    debugCheck:SetPoint("TOPLEFT", leftCol, yLeft)
     getglobal(debugCheck:GetName() .. "Text"):SetText("Debug Mode")
     debugCheck:SetScript("OnClick", function()
         ChronicleLog:SetSetting("debugMode", this:GetChecked() == 1)
     end)
     panel.debugCheck = debugCheck
     
+    yLeft = yLeft - 32
+    
     local debugChatLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    debugChatLabel:SetPoint("TOPLEFT", midCol, yOffset + 3)
-    debugChatLabel:SetText("Output Window:")
+    debugChatLabel:SetPoint("TOPLEFT", leftCol, yLeft)
+    debugChatLabel:SetText("Output:")
     
     local debugChatDropdown = CreateFrame("Frame", "ChronicleLogDebugChat", panel, "UIDropDownMenuTemplate")
-    debugChatDropdown:SetPoint("LEFT", debugChatLabel, "RIGHT", -10, -2)
+    debugChatDropdown:SetPoint("LEFT", debugChatLabel, "RIGHT", -5, -2)
     
     local function GetChatWindowName(index)
         local tab = getglobal("ChatFrame" .. index .. "Tab")
@@ -350,20 +375,19 @@ function ChronicleLog:CreateOptionsPanel()
     panel.debugChatDropdown = debugChatDropdown
     panel.GetChatWindowName = GetChatWindowName
     
-    yOffset = yOffset - 30
-    
-    -- ===================
-    -- Log Management Section
-    -- ===================
+    -- =========================================================================
+    -- SECTION 6: Log Management (Right Column)
+    -- =========================================================================
     local logHeader = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    logHeader:SetPoint("TOPLEFT", leftCol, yOffset)
+    logHeader:SetPoint("TOPLEFT", rightCol, yRight)
     logHeader:SetText("Log Management")
-    yOffset = yOffset - 22
+    yRight = yRight - 20
     
+    -- Row 1: Flush + Clear
     local flushButton = CreateFrame("Button", "ChronicleLogFlushButton", panel, "UIPanelButtonTemplate")
-    flushButton:SetWidth(120)
+    flushButton:SetWidth(105)
     flushButton:SetHeight(22)
-    flushButton:SetPoint("TOPLEFT", leftCol, yOffset)
+    flushButton:SetPoint("TOPLEFT", rightCol, yRight)
     flushButton:SetText("Flush to Disk")
     flushButton:SetScript("OnClick", function()
         local lines = ChronicleLog:FlushToFile()
@@ -372,48 +396,32 @@ function ChronicleLog:CreateOptionsPanel()
     end)
     
     local clearButton = CreateFrame("Button", "ChronicleLogClearButton", panel, "UIPanelButtonTemplate")
-    clearButton:SetWidth(120)
+    clearButton:SetWidth(105)
     clearButton:SetHeight(22)
-    clearButton:SetPoint("LEFT", flushButton, "RIGHT", 10, 0)
+    clearButton:SetPoint("LEFT", flushButton, "RIGHT", 5, 0)
     clearButton:SetText("Clear Disk Logs")
-    
-    local confirmButton = CreateFrame("Button", "ChronicleLogConfirmClear", panel, "UIPanelButtonTemplate")
-    confirmButton:SetWidth(80)
-    confirmButton:SetHeight(22)
-    confirmButton:SetPoint("LEFT", clearButton, "RIGHT", 10, 0)
-    confirmButton:SetText("Confirm")
-    confirmButton:Hide()
-    panel.confirmButton = confirmButton
-    
     clearButton:SetScript("OnClick", function()
-        confirmButton:Show()
+        StaticPopup_Show("CHRONICLELOG_CLEAR_CONFIRM")
     end)
     
-    confirmButton:SetScript("OnClick", function()
-        local filename = "Chronicle_" .. (UnitName("player") or "Unknown")
-        ExportFile(filename, "")
-        Chronicle:Print("Cleared disk logs: " .. filename)
-        this:Hide()
-    end)
+    yRight = yRight - 32
     
-    yOffset = yOffset - 28
-    
-    -- Move Logs row: text input + button
+    -- Row 2: Suffix input + Move Logs
     local moveLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    moveLabel:SetPoint("TOPLEFT", leftCol, yOffset + 3)
+    moveLabel:SetPoint("TOPLEFT", rightCol, yRight + 3)
     moveLabel:SetText("Suffix:")
     
     local moveEditBox = CreateFrame("EditBox", "ChronicleLogMoveEditBox", panel, "InputBoxTemplate")
-    moveEditBox:SetWidth(120)
+    moveEditBox:SetWidth(80)
     moveEditBox:SetHeight(20)
-    moveEditBox:SetPoint("LEFT", moveLabel, "RIGHT", 10, 0)
+    moveEditBox:SetPoint("LEFT", moveLabel, "RIGHT", 8, 0)
     moveEditBox:SetAutoFocus(false)
-    moveEditBox:SetMaxLetters(32)
+    moveEditBox:SetMaxLetters(20)
     
     local moveButton = CreateFrame("Button", "ChronicleLogMoveButton", panel, "UIPanelButtonTemplate")
-    moveButton:SetWidth(100)
+    moveButton:SetWidth(80)
     moveButton:SetHeight(22)
-    moveButton:SetPoint("LEFT", moveEditBox, "RIGHT", 10, 0)
+    moveButton:SetPoint("LEFT", moveEditBox, "RIGHT", 5, 0)
     moveButton:SetText("Move Logs")
     moveButton:Disable()
     
@@ -435,22 +443,14 @@ function ChronicleLog:CreateOptionsPanel()
         local timestamp = time()
         local newFile = "Chronicle_" .. playerName .. "_" .. suffix .. "_" .. timestamp
         
-        -- Read existing logs from disk
         local existing = ImportFile(currentFile) or ""
-        
-        -- Append memory buffer
         local bufferContent = ""
         if ChronicleLog.bufferSize > 0 then
             bufferContent = table.concat(ChronicleLog.buffer, "\n")
-            if existing ~= "" then
-                existing = existing .. "\n"
-            end
+            if existing ~= "" then existing = existing .. "\n" end
         end
         
-        -- Write to new file
         ExportFile(newFile, existing .. bufferContent)
-        
-        -- Clear original file and buffer
         ExportFile(currentFile, "")
         ChronicleLog.buffer = {}
         ChronicleLog.bufferSize = 0
@@ -460,10 +460,13 @@ function ChronicleLog:CreateOptionsPanel()
         ChronicleLog:RefreshOptionsPanel()
     end)
     
+    yRight = yRight - 26
+    
+    -- Row 3: Reset Settings
     local resetButton = CreateFrame("Button", "ChronicleLogResetButton", panel, "UIPanelButtonTemplate")
-    resetButton:SetWidth(100)
+    resetButton:SetWidth(105)
     resetButton:SetHeight(22)
-    resetButton:SetPoint("LEFT", moveButton, "RIGHT", 10, 0)
+    resetButton:SetPoint("TOPLEFT", rightCol, yRight)
     resetButton:SetText("Reset Settings")
     resetButton:SetScript("OnClick", function()
         ChronicleCompanionDB.advancedLog = {}
@@ -475,6 +478,23 @@ function ChronicleLog:CreateOptionsPanel()
     self.optionsPanel = panel
     tinsert(UISpecialFrames, "ChronicleLogOptionsPanel")
 end
+
+-- Clear confirmation popup
+StaticPopupDialogs["CHRONICLELOG_CLEAR_CONFIRM"] = {
+    text = "Are you sure you want to clear all logs on disk?",
+    button1 = "Yes, Clear",
+    button2 = "Cancel",
+    OnAccept = function()
+        local filename = "Chronicle_" .. (UnitName("player") or "Unknown")
+        ExportFile(filename, "")
+        Chronicle:Print("Cleared disk logs: " .. filename)
+        ChronicleLog:RefreshOptionsPanel()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
 
 function ChronicleLog:OpenOptionsPanel()
     if not self.optionsPanel then self:CreateOptionsPanel() end
