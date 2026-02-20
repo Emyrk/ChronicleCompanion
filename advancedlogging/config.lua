@@ -195,7 +195,7 @@ function ChronicleLog:CreateOptionsPanel()
     panel.reminderCheck = reminderCheck
     
     local reminderDesc = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    reminderDesc:SetPoint("TOPLEFT", rightCol + 130, yRight + 5)
+    reminderDesc:SetPoint("TOPLEFT", rightCol + 98, yRight-11)
     reminderDesc:SetText("(disabled when auto is on)")
     reminderDesc:SetTextColor(0.5, 0.5, 0.5)
     panel.reminderDesc = reminderDesc
@@ -549,7 +549,7 @@ function ChronicleLog:RefreshOptionsPanel()
     panel.reminderCheck:SetChecked(self:GetSetting("showLogReminder"))
     panel.debugCheck:SetChecked(self:GetSetting("debugMode"))
     
-    local autoEnabled = self:GetSetting("autoEnableInRaid") or self:GetSetting("autoEnableInDungeon")
+    local autoEnabled = self:GetSetting("autoEnableInRaid") and self:GetSetting("autoEnableInDungeon")
     if autoEnabled then
         panel.reminderCheck:Disable()
         getglobal(panel.reminderCheck:GetName() .. "Text"):SetTextColor(0.5, 0.5, 0.5)
