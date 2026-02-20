@@ -75,6 +75,10 @@ function ChronicleLog:Init()
     -- Initialize config (merge defaults into SavedVariables)
     self:InitConfig()
     
+    -- Store time offset for millisecond timestamps
+    -- GetTime() returns session time with ms precision, time() returns unix seconds
+    self.timeOffset = time() - GetTime()
+    
     self.frame = CreateFrame("Frame", "ChronicleLogFrame")
     self.frame:SetScript("OnEvent", function()
         -- Always process zone changes (for auto-enable/disable even when logging is off)
@@ -186,6 +190,11 @@ function ChronicleLog:GenerateHeader()
     wowBuild = wowBuild or ""
     wowBuildDate = wowBuildDate or ""
     
+    -- Clock info (local and UTC)
+    local ts = time()
+    local localTime = date("%d.%m.%y %H:%M:%S", ts)
+    local utcTime = date("!%d.%m.%y %H:%M:%S", ts)
+    
     local parts = {
         "HEADER",
         playerGuid,
@@ -197,7 +206,9 @@ function ChronicleLog:GenerateHeader()
         xp3Version,
         wowVersion,
         wowBuild,
-        wowBuildDate
+        wowBuildDate,
+        localTime,
+        utcTime
     }
     
     return table.concat(parts, LOG_SEP)
@@ -217,7 +228,9 @@ end
 --- Buffer is written to file when logging is disabled via ChronicleLog:Disable().
 ---@param eventType string Event type code (SWING, CAST, DEATH, COMBAT_START, COMBAT_END, RAW)
 function ChronicleLog:Write(eventType, ...)
-    local parts = { time(), eventType }
+    -- Millisecond timestamp: combine GetTime() precision with unix offset
+    local timestamp = math.floor((GetTime() + self.timeOffset) * 1000)
+    local parts = { timestamp, eventType }
     for i = 1, arg.n do
         local v = arg[i]
         parts[table.getn(parts) + 1] = v ~= nil and tostring(v) or ""
