@@ -61,6 +61,9 @@ ChronicleLog.events = {
     -- Chat events
     "CHAT_MSG_LOOT",               -- Loot messages (arg1 = message)
     "CHAT_MSG_SYSTEM",             -- System messages (arg1 = message) - used for trade detection
+    
+    -- Session events
+    "PLAYER_LEAVING_WORLD",        -- Flush logs on logout/disconnect/reload
 }
 
 -- =============================================================================
@@ -71,6 +74,9 @@ ChronicleLog.events = {
 --- Creates the event frame and sets up the event dispatcher.
 --- Must be called once during addon initialization.
 function ChronicleLog:Init()
+    -- Initialize config (merge defaults into SavedVariables)
+    self:InitConfig()
+    
     self.frame = CreateFrame("Frame", "ChronicleLogFrame")
     self.frame:SetScript("OnEvent", function()
         if ChronicleLog.enabled and ChronicleLog[event] then
@@ -227,7 +233,7 @@ function ChronicleLog:FlushToFile()
     
     -- Generate filename based on character name
     local playerName = UnitName("player") or "Unknown"
-    local filename = "Chronicle_" .. playerName .. ".txt"
+    local filename = "Chronicle_" .. playerName
     
     -- Read existing file content
     local existingContent = ""
@@ -920,3 +926,14 @@ function ChronicleLog:CHAT_MSG_SYSTEM(msg)
     end
 end
 
+-- =============================================================================
+-- Session Event Handlers
+-- =============================================================================
+
+--- Handles PLAYER_LEAVING_WORLD events.
+--- Flushes the log buffer to file on logout/disconnect/reload.
+function ChronicleLog:PLAYER_LEAVING_WORLD()
+    if self.bufferSize > 0 then
+        self:FlushToFile()
+    end
+end
