@@ -151,6 +151,11 @@ function ChronicleLog:CheckUnit(guid)
     
     -- Write UNIT_INFO event
     self:Write("UNIT_INFO", guid, isPlayer, name, canCooperate, owner, buffs, level, challenges, maxHealth)
+    
+    -- Write COMBATANT_INFO for players (gear, talents, guild)
+    if isPlayer == 1 then
+        self:WriteCombatantInfo(guid)
+    end
 end
 
 --- Purges all units from the logged database.

@@ -55,6 +55,12 @@ ChronicleLog.events = {
     "SPELL_GO_OTHER",              -- Requires CVar NP_EnableSpellGoEvents = 1
     "SPELL_START_SELF",            -- Requires CVar NP_EnableSpellStartEvents = 1
     "SPELL_START_OTHER",           -- Requires CVar NP_EnableSpellStartEvents = 1
+
+    "ZONE_CHANGED_NEW_AREA",       -- Custom event to trigger unit purge on zone change
+    
+    -- Chat events
+    "CHAT_MSG_LOOT",               -- Loot messages (arg1 = message)
+    "CHAT_MSG_SYSTEM",             -- System messages (arg1 = message) - used for trade detection
 }
 
 -- =============================================================================
@@ -172,6 +178,14 @@ function ChronicleLog:GenerateHeader()
     return table.concat(parts, LOG_SEP)
 end
 
+--- Writes the header line to the buffer.
+--- Call this on zone changes to record session metadata.
+function ChronicleLog:WriteHeader()
+    local header = self:GenerateHeader()
+    self.bufferSize = self.bufferSize + 1
+    self.buffer[self.bufferSize] = header
+end
+
 --- Formats a log line and appends it to the in-memory buffer.
 --- Output format: TIMESTAMP|EVENT_TYPE|field1|field2|...
 --- Uses Lua 5.0 vararg style (arg table) for Vanilla WoW compatibility.
@@ -248,6 +262,38 @@ end
 -- =============================================================================
 -- Event Handlers
 -- =============================================================================
+
+--- Handles ZONE_CHANGED_NEW_AREA events every time the zone changes.
+--- Logs header and zone info, then purges the units database.
+function ChronicleLog:ZONE_CHANGED_NEW_AREA()
+    -- Log header with player/addon/version info
+    self:WriteHeader()
+    
+    -- Get zone name and find instance ID from saved instances
+    local zoneName = GetRealZoneText() or ""
+    local zoneLower = strlower(zoneName)
+    local instanceId = 0
+    
+    for i = 1, GetNumSavedInstances() do
+        local instanceName, savedId = GetSavedInstanceInfo(i)
+        if zoneLower == strlower(instanceName) then
+            instanceId = savedId
+            break
+        end
+    end
+    
+    -- IsInInstance returns: inInstance (1/nil), instanceType (string)
+    local inInstance, instanceType = IsInInstance()
+    inInstance = inInstance and 1 or 0
+    instanceType = instanceType or "none"
+    
+    local isGhost = UnitIsGhost("player") and 1 or 0
+    
+    self:Write("ZONE_INFO", zoneName, instanceId, inInstance, instanceType, isGhost)
+    
+    -- Purge units database (all GUIDs need re-logging in new zone)
+    self:PurgeUnits()
+end
 
 --- Handles UNIT_CASTEVENT events.
 --- Called when a unit starts, finishes, fails, or channels a cast.
@@ -836,3 +882,41 @@ function ChronicleLog:SPELL_START_OTHER(itemId, spellId, casterGuid, targetGuid,
     self:CheckUnit(targetGuid)
     self:Write("SPELL_START", itemId, spellId, casterGuid, targetGuid, castFlags, castTime, duration, spellType)
 end
+
+-- =============================================================================
+-- Chat Event Handlers
+-- =============================================================================
+
+--- Handles CHAT_MSG_LOOT events.
+--- Message format: "You receive loot: [Item]." or "PlayerName receives loot: [Item]."
+--- Writes a LOOT event with unit name and item link.
+---@param msg string The loot message
+function ChronicleLog:CHAT_MSG_LOOT(msg)
+    if not msg then return end
+    
+    -- Parse "You receive loot:" or "PlayerName receives loot:"
+    -- Pattern captures the name (or "You") and the item link
+    local _, _, looter, itemLink = strfind(msg, "^(.+) receives? loot: (.+)%.$")
+    if not looter then return end
+    
+    -- Convert "You" to player name
+    if looter == "You" then
+        looter = UnitName("player") or "You"
+    end
+    
+    self:Write("LOOT", looter, itemLink)
+end
+
+--- Handles CHAT_MSG_SYSTEM events.
+--- Detects trade messages: "PlayerA trades item ItemName to PlayerB."
+--- Writes a LOOT_TRADE event with the raw message.
+---@param msg string The system message
+function ChronicleLog:CHAT_MSG_SYSTEM(msg)
+    if not msg then return end
+    
+    -- Check for trade pattern: "Iseut trades item Libram of the Faithful to Milkpress."
+    if strfind(msg, "^%w+ trades item") then
+        self:Write("LOOT_TRADE", msg)
+    end
+end
+

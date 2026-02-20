@@ -10,6 +10,7 @@
 
 advancedlogging\core.lua
 advancedlogging\units.lua
+advancedlogging\combatant.lua
 
 util.lua
 units.lua
