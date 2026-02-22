@@ -73,3 +73,105 @@ end
 
 -- -- Default
 -- RegisterEvent("RAW_COMBATLOG")
+
+-- local ADDON = "ChronicleFileRoundTrip"
+
+-- -- 1MB payload in memory (created once, reused on every click)
+-- local ONE_MB = string.rep("x", 1024 * 1024*20)
+
+-- local INPUT_NAME  = "chronicle"
+-- local OUTPUT_NAME = "chronicle"
+
+-- local function ReadFile(name)
+--   if type(ImportFile) == "function" then
+--     return ImportFile(name)
+--   end
+--   return nil, "ImportFile() not available in this client/mod"
+-- end
+
+-- local function WriteFile(name, data)
+--   if type(ExportFile) == "function" then
+--     ExportFile(name, data)
+--     return true
+--   end
+--   return false, "ExportFile() not available in this client/mod"
+-- end
+
+-- local function Now()
+--   return date("%Y-%m-%d %H:%M:%S")
+-- end
+
+-- -- formats seconds nicely (ms)
+-- local function fmt_ms(sec)
+--   return string.format("%.2fms", sec * 1000)
+-- end
+
+-- local btn
+
+-- local function CreateButton()
+--   if btn then return end
+
+--   btn = CreateFrame("Button", "ChronicleFileRoundTripButton", UIParent, "UIPanelButtonTemplate")
+--   btn:SetWidth(220)
+--   btn:SetHeight(28)
+--   btn:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+--   btn:SetText("Chronicle: Import → +1MB → Export")
+--   btn:Show()
+
+--   btn:SetScript("OnClick", function()
+--     local t0 = GetTime()
+
+--     local before, readErr = ReadFile(INPUT_NAME)
+--     local t1 = GetTime()
+
+--     if not before then
+--       before = ""
+--       DEFAULT_CHAT_FRAME:AddMessage(
+--         string.format("|cffffcc00[%s]|r No input read (%s). Using empty string.", ADDON, readErr or "unknown")
+--       )
+--     else
+--       DEFAULT_CHAT_FRAME:AddMessage(
+--         string.format("|cff00ff00[%s]|r Read %d bytes from %s", ADDON, string.len(before), INPUT_NAME)
+--       )
+--     end
+
+--     local toAdd = "\n[" .. ADDON .. " " .. Now() .. "] +1MB payload\n" .. ONE_MB
+--     local out = before .. toAdd
+--     local t2 = GetTime()
+
+--     local ok, writeErr = WriteFile(OUTPUT_NAME, out)
+--     local t3 = GetTime()
+
+--     if ok then
+--       DEFAULT_CHAT_FRAME:AddMessage(
+--         string.format("|cff00ff00[%s]|r Queued export %d bytes to %s", ADDON, string.len(out), OUTPUT_NAME)
+--       )
+--       DEFAULT_CHAT_FRAME:AddMessage(
+--         string.format("|cffffcc00[%s]|r Note: many clients only actually write on /reload or logout.", ADDON)
+--       )
+--     else
+--       DEFAULT_CHAT_FRAME:AddMessage(
+--         string.format("|cffff0000[%s]|r Export failed: %s", ADDON, writeErr or "unknown")
+--       )
+--     end
+
+--     -- Timing output
+--     DEFAULT_CHAT_FRAME:AddMessage(string.format(
+--       "|cff00ffff[%s]|r Timings: read=%s, build=%s, export_call=%s, total=%s",
+--       ADDON,
+--       fmt_ms(t1 - t0),
+--       fmt_ms(t2 - t1),
+--       fmt_ms(t3 - t2),
+--       fmt_ms(t3 - t0)
+--     ))
+--   end)
+
+--   DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ff00[%s]|r Loaded. Click the button to test file round-trip.", ADDON))
+-- end
+
+-- local f = CreateFrame("Frame")
+-- f:RegisterEvent("PLAYER_LOGIN")
+-- f:SetScript("OnEvent", function()
+--   CreateButton()
+--   DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00["..ADDON.."]|r Loaded. Use /chronicle to toggle.")
+-- end)

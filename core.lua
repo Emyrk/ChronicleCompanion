@@ -9,6 +9,7 @@
 ---@class Chronicle
 ---@field version string
 ---@field superWoW boolean if superWoW is present
+---@field nampower boolean if nampower is present
 ---@field superWoWLogger boolean if superWoWLogger is present
 ---@field logging boolean if combat logging is currently enabled
 Chronicle = {}
@@ -24,11 +25,13 @@ function Chronicle:Init()
 	self:CreateOptionsPanel()
 	self:InitDeps()
 	InitChronicleUnits()
+	ChronicleLog:Init()
 end
 
 function Chronicle:InitDeps()
 	self.superWoW = false
 	self.superWoWLogger = false
+	self.nampower = false
 	self.embeddedSuperWoWLogger = false
 	
 	-- Check for SuperWoW requirement
@@ -36,17 +39,19 @@ function Chronicle:InitDeps()
 		self.superWoW = true
 	end
 
+	if GetNampowerVersion then
+		self.nampower = true
+	end
+
 	-- Check if any SuperWoWLogger is available (external or embedded)
 	if RPLL and log_combatant_info then
 		self.superWoWLogger = true
 	end
 
-
 	-- Load embedded SuperWoWLogger if external one isn't loaded
 	if not IsAddOnLoaded("SuperWowCombatLogger") then
 		self:LoadEmbeddedSuperWoWLogger()
 	end
-	
 
 	if not self.superWoW then
 		Chronicle:Print("Warning: The SuperWoW mod by Balake is not detected. This mod is required for ChronicleCompanion to work.")
@@ -438,7 +443,7 @@ function Chronicle:DebugPrint(msg)
         frame = DEFAULT_CHAT_FRAME
     end
     
-    frame:AddMessage("|cff88ffff[Chronicle Debug]|r " .. tostring(msg))
+    frame:AddMessage("|cff88ffff[->]|r " .. tostring(msg))
 end
 
 -- =============================================================================
