@@ -4,8 +4,11 @@
 
 function Chronicle:RegisterSlashCommands()
 	SLASH_CHRONICLE1 = "/chronicle"
-	SLASH_CHRONICLE2 = "/chron"
-	
+
+	if not IsAddOnLoaded("Chronometer") then
+		SLASH_CHRONICLE2 = "/chron"
+	end
+
 	SlashCmdList["CHRONICLE"] = function(msg)
 		Chronicle:HandleSlashCommand(msg)
 	end
