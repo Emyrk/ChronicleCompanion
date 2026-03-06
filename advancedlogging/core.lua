@@ -81,12 +81,14 @@ function ChronicleLog:Init()
     
     self.frame = CreateFrame("Frame", "ChronicleLogFrame")
     self.frame:SetScript("OnEvent", function()
+        local autoSave = (event == "PLAYER_REGEN_ENABLED" and self:GetSetting("autoCombatSave"))
         -- Always process zone changes (for auto-enable/disable even when logging is off)
+        if event == "PLAYER_ENTERING_WORLD" or autoSave then
+            ChronicleLog:FlushToFile()
+        end
+
         if event == "ZONE_CHANGED_NEW_AREA" or event == "PLAYER_ENTERING_WORLD" then
             -- Flush buffer on loading screens to prevent data loss
-            if event == "PLAYER_ENTERING_WORLD" then
-                ChronicleLog:FlushToFile()
-            end
             ChronicleLog:ZONE_CHANGED_NEW_AREA()
             return
         end
@@ -99,7 +101,8 @@ function ChronicleLog:Init()
     -- Always register zone events (needed for auto-enable even when logging is off)
     self.frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     self.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    
+    self.frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+
     -- Restore logging state from last session
     if self:GetSetting("enabled") then
         self:Enable()

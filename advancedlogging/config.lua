@@ -14,6 +14,7 @@ local DEFAULTS = {
     autoEnableInRaid = true,
     autoEnableInDungeon = true,
     showLogReminder = true,
+    autoCombatSave = false,
     rangeDefault = 40,
     rangeDungeon = 100,
     rangeRaid = 200,
@@ -141,7 +142,7 @@ StaticPopupDialogs["CHRONICLELOG_DEPENDENCY_WARNING"] = {
 function ChronicleLog:CreateOptionsPanel()
     local panel = CreateFrame("Frame", "ChronicleLogOptionsPanel", UIParent)
     panel:SetWidth(520)
-    panel:SetHeight(380)
+    panel:SetHeight(400)
     panel:SetPoint("CENTER", 0, 0)
     panel:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -267,8 +268,19 @@ function ChronicleLog:CreateOptionsPanel()
     reminderDesc:SetTextColor(0.5, 0.5, 0.5)
     panel.reminderDesc = reminderDesc
     
+    yRight = yRight - 20
+
+    local autoCombatSaveCheck = CreateFrame("CheckButton", "ChronicleLogAutoCombatSave", panel, "UICheckButtonTemplate")
+    autoCombatSaveCheck:SetPoint("TOPLEFT", rightCol, yRight)
+    getglobal(autoCombatSaveCheck:GetName() .. "Text"):SetText("Auto-save when leaving combat")
+    autoCombatSaveCheck:SetScript("OnClick", function()
+        ChronicleLog:SetSetting("autoCombatSave", this:GetChecked() == 1)
+        ChronicleLog:RefreshOptionsPanel()
+    end)
+    panel.autoCombatSaveCheck = autoCombatSaveCheck
+
     yRight = yRight - 32
-    
+
     -- Sync columns
     local yRow2 = math.min(yLeft, yRight)
     yLeft = yRow2
@@ -621,6 +633,7 @@ function ChronicleLog:RefreshOptionsPanel()
     panel.autoRaidCheck:SetChecked(self:GetSetting("autoEnableInRaid"))
     panel.autoDungeonCheck:SetChecked(self:GetSetting("autoEnableInDungeon"))
     panel.reminderCheck:SetChecked(self:GetSetting("showLogReminder"))
+    panel.autoCombatSaveCheck:SetChecked(self:GetSetting("autoCombatSave"))
     panel.debugCheck:SetChecked(self:GetSetting("debugMode"))
     
     local autoEnabled = self:GetSetting("autoEnableInRaid") and self:GetSetting("autoEnableInDungeon")
