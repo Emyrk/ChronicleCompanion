@@ -26,16 +26,19 @@ local function GetPetUnit(unit)
     return nil
 end
 
---- Extracts item string from an inventory item link.
+--- Extracts item string and name from an inventory item link.
 --- Returns nil if no item or link parsing fails.
 ---@param link string|nil Item link from GetInventoryItemLink
----@return string|nil itemString The item string or nil
+---@return string|nil itemData Format: "name;itemString" or nil
 local function ParseItemLink(link)
     if not link then
         return nil
     end
-    local found, _, itemString = strfind(link, "Hitem:(.+)|h%[")
-    return found and itemString or nil
+    local found, _, itemString, itemName = strfind(link, "Hitem:(.+)|h%[(.-)%]")
+    if found then
+        return itemName .. ";" .. itemString
+    end
+    return nil
 end
 
 -- =============================================================================
