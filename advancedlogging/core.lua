@@ -311,6 +311,18 @@ function ChronicleLog:FlushToFile()
     return written
 end
 
+--- Copy file
+---@param origFilename string filename of original version
+---@param destFilename string filename of copied version
+function ChronicleLog:CopyFile(origFilename, destFilename)
+    if not ExportFile or not ImportFile then
+        Chronicle:Print("ExportFile/ImportFile not available (requires SuperWoW)")
+        return
+    end
+
+    ExportFile(destFilename, ImportFile(origFilename));
+end
+
 -- =============================================================================
 -- Event Handlers
 -- =============================================================================
