@@ -5,7 +5,7 @@
 function Chronicle:RegisterSlashCommands()
 	SLASH_CHRONICLE1 = "/chronicle"
 
-	if not IsAddOnLoaded("Chronometer") then
+	if not IsAddOnLoaded("Chronometer") and not IsAddOnLoaded("Chronometer-TWoW") then
 		SLASH_CHRONICLE2 = "/chron"
 	end
 

@@ -1,11 +1,11 @@
 ## Interface: 11200
 ## Title: ChronicleCompanion
 ## Notes: Use with the website Chronicle
-## Version: 0.8
+## Version: 0.9
 ## DefaultState: enabled
 ## Author: Emyrk
 ## SavedVariables: ChronicleCompanionDB
-## OptionalDeps: SuperWowCombatLogger, Chronometer
+## OptionalDeps: SuperWowCombatLogger, Chronometer, Chronometer-TWoW
 
 
 util.lua
