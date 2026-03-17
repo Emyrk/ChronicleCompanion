@@ -936,7 +936,9 @@ end
 ---@param spellResult number SpellCastResult enum value
 ---@param failedByServer number 1 if failed by server, 0 if client-side failure
 function ChronicleLog:SPELL_FAILED_SELF(spellId, spellResult, failedByServer)
-    self:Write("SPELL_FAIL", spellId, spellResult, failedByServer)
+    local _, playerGuid = UnitExists("player")
+    -- Reordering parameters to keep the same as `SPELL_FAILED_OTHER`
+    self:Write("SPELL_FAIL", playerGuid, spellId, failedByServer, spellResult)
 end
 
 --- Handles SPELL_FAILED_OTHER events.
@@ -947,7 +949,7 @@ end
 ---@param spellId number Spell ID that failed
 function ChronicleLog:SPELL_FAILED_OTHER(casterGuid, spellId)
     self:CheckUnit(casterGuid)
-    self:Write("SPELL_FAIL", casterGuid, spellId)
+    self:Write("SPELL_FAIL", casterGuid, spellId, true)
 end
 
 --- Handles SPELL_GO_SELF events.
