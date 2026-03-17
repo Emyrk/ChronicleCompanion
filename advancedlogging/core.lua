@@ -938,7 +938,7 @@ end
 function ChronicleLog:SPELL_FAILED_SELF(spellId, spellResult, failedByServer)
     local _, playerGuid = UnitExists("player")
     -- Reordering parameters to keep the same as `SPELL_FAILED_OTHER`
-    self:Write("SPELL_FAIL", playerGuid, spellId, failedByServer, spellResult)
+    self:Write("SPELL_FAIL", playerGuid, spellId, failedByServer == 1, spellResult)
 end
 
 --- Handles SPELL_FAILED_OTHER events.
