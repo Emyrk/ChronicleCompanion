@@ -509,19 +509,21 @@ function ChronicleLog:CreateOptionsPanel()
         if not suffix or suffix == "" then return end
         
         local playerName = UnitName("player") or "Unknown"
-        local currentFile = "Chronicle_" .. playerName
+        local currentFile = "Chronicle_" .. playerName .. ".txt"
         local timestamp = time()
-        local newFile = "Chronicle_" .. playerName .. "_" .. suffix .. "_" .. timestamp
+        local newFile = "Chronicle_" .. playerName .. "_" .. suffix .. "_" .. timestamp .. ".txt"
         
-        local existing = ImportFile(currentFile) or ""
+        -- Read existing file content and combine with buffer
+        local existing = ChronicleFile:ReadFile(currentFile) or ""
         local bufferContent = ""
         if ChronicleLog.bufferSize > 0 then
             bufferContent = table.concat(ChronicleLog.buffer, "\n")
             if existing ~= "" then existing = existing .. "\n" end
         end
         
-        ExportFile(newFile, existing .. bufferContent)
-        ExportFile(currentFile, "")
+        -- Write to new archive file and clear current file
+        ChronicleFile:WriteFile(newFile, existing .. bufferContent)
+        ChronicleFile:WriteFile(currentFile, "")
         ChronicleLog.buffer = {}
         ChronicleLog.bufferSize = 0
         
@@ -555,8 +557,8 @@ StaticPopupDialogs["CHRONICLELOG_CLEAR_CONFIRM"] = {
     button1 = "Yes, Delete",
     button2 = "Cancel",
     OnAccept = function()
-        local filename = "Chronicle_" .. (UnitName("player") or "Unknown")
-        ExportFile(filename, "")
+        local filename = "Chronicle_" .. (UnitName("player") or "Unknown") .. ".txt"
+        ChronicleFile:WriteFile(filename, "")
         ChronicleLog:ClearBuffer()
         ChronicleLog:PurgeUnits()
         -- Write fresh zone info to start the new log (bypass enabled check)
