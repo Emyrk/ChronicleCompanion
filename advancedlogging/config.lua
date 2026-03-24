@@ -6,7 +6,7 @@
 local MIN_VERSIONS = {
     superwow = "1.5",         
     unitxp3 = "1771083771",          
-    nampower = "4.1.2",       
+    nampower = "3.2.0",       
 }
 
 -- Default settings
