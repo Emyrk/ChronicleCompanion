@@ -290,7 +290,7 @@ function ChronicleLog:FlushToFile()
     -- Append content to file (creates file if doesn't exist)
     local ok, err = ChronicleFile:AppendToFile(filename, newContent)
     if ok then
-        Chronicle:Print("Appended " .. self.bufferSize .. " lines to " .. filename)
+        Chronicle:DebugPrint("Appended " .. self.bufferSize .. " lines to " .. filename)
     else
         Chronicle:Print("Failed to write: " .. (err or "unknown error"))
     end
