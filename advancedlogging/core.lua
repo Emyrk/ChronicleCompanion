@@ -265,7 +265,7 @@ function ChronicleLog:GetBufferSize()
 end
 
 --- Writes the in-memory buffer to a file and clears the buffer.
---- Appends to existing file content (reads via ImportFile first).
+--- Appends to existing file content using native append mode.
 --- Filename: Chronicle_<CharacterName>.txt
 ---@return number linesWritten Number of new lines written
 function ChronicleLog:FlushToFile()
@@ -278,32 +278,18 @@ function ChronicleLog:FlushToFile()
     
     -- Generate filename based on character name
     local playerName = UnitName("player") or "Unknown"
-    local filename = "Chronicle_" .. playerName
-    
-    -- Read existing file content
-    local existingContent = ""
-    if ImportFile then
-        existingContent = ImportFile(filename) or ""
-    end
+    local filename = "Chronicle_" .. playerName .. ".txt"
     
     -- Join buffer lines with newlines, prepend header
     local bufferContent = table.concat(self.buffer, "\n")
-    local newContent = header .. "\n" .. bufferContent
+    local newContent = header .. "\n" .. bufferContent .. "\n"
     
-    -- Append new content (add newline separator if existing content exists)
-    local finalContent
-    if existingContent ~= "" then
-        finalContent = existingContent .. "\n" .. newContent
-    else
-        finalContent = newContent
-    end
-    
-    -- Write combined content to file
-    if ExportFile then
-        ExportFile(filename, finalContent)
+    -- Append content to file (creates file if doesn't exist)
+    local ok, err = ChronicleFile:AppendToFile(filename, newContent)
+    if ok then
         Chronicle:Print("Appended " .. self.bufferSize .. " lines to " .. filename)
     else
-        Chronicle:Print("ExportFile not available (requires SuperWoW)")
+        Chronicle:Print("Failed to write: " .. (err or "unknown error"))
     end
     
     local written = self.bufferSize
