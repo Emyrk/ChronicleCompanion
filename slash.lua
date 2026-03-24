@@ -12,6 +12,11 @@ function Chronicle:RegisterSlashCommands()
 	SlashCmdList["CHRONICLE"] = function(msg)
 		Chronicle:HandleSlashCommand(msg)
 	end
+
+	SLASH_CLOG1 = "/clog"
+	SlashCmdList["CLOG"] = function()
+		ChronicleLog:OpenOptionsPanel()
+	end
 end
 
 local function split(str, delim)
@@ -88,4 +93,5 @@ function Chronicle:ShowHelp()
 	self:Print("/chronicle version - Show addon version")
 	self:Print("/chronicle config - Open options panel")
 	self:Print("/chronicle help - Show this help")
+	self:Print("/clog - Open chronicle log options")
 end
