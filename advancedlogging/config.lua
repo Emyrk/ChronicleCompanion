@@ -529,6 +529,13 @@ function ChronicleLog:CreateOptionsPanel()
         
         Chronicle:Print("Moved logs to: " .. newFile)
         moveEditBox:SetText("")
+        
+        -- Reset state for existing logs
+        ChronicleLog:ClearBuffer()
+        ChronicleLog:PurgeUnits()
+        -- Write fresh zone info to start the new log (bypass enabled check)
+        ChronicleLog:WriteZoneInfo(true)
+
         ChronicleLog:RefreshOptionsPanel()
     end)
     
