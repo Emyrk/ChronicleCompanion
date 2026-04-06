@@ -119,8 +119,8 @@ function ChronicleLog:CheckUnit(guid)
     end
     
     -- Validate unit exists
-    local exists, resolvedGuid = UnitExists(guid)
-    if not exists then
+    local unitData = GetUnitData(guid)
+    if not unitData then
         return
     end
     
@@ -142,6 +142,8 @@ function ChronicleLog:CheckUnit(guid)
     if ownerExists and ownerGuid then
         owner = ownerGuid
     end
+
+    local charm = GetUnitField(guid, "charm")
     
     -- Get challenges (only meaningful for player)
     local challenges = isMe == 1 and self.units.challenges or "na"
@@ -150,7 +152,7 @@ function ChronicleLog:CheckUnit(guid)
     self.units.logged[guid] = now
     
     -- Write UNIT_INFO event
-    self:Write("UNIT_INFO", guid, isMe, name, canCooperate, owner, buffs, level, challenges, maxHealth)
+    self:Write("UNIT_INFO", guid, isMe, name, canCooperate, owner, buffs, level, challenges, maxHealth, charm)
     
     -- Write COMBATANT_INFO for players (gear, talents, guild)
     if UnitIsPlayer(guid) == 1 then
