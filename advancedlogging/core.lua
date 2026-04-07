@@ -31,6 +31,12 @@ ChronicleLog.events = {
     "SPELL_ENERGIZE_ON_SELF",  -- Requires CVar NP_EnableSpellEnergizeEvents = 1
     "SPELL_MISS_SELF",         -- Your spells that missed/resisted/etc.
     "SPELL_MISS_OTHER",        -- Others' spells that missed/resisted/etc.
+    "SPELL_DISPEL_BY_SELF",    -- You dispelled a spell from a unit
+    "SPELL_DISPEL_BY_OTHER",   -- Someone else dispelled a spell from a unit
+    "ENVIRONMENTAL_DMG_SELF",  -- Active player took environmental damage
+    "ENVIRONMENTAL_DMG_OTHER", -- Another unit took environmental damage
+    "DAMAGE_SHIELD_SELF",      -- Active player's damage shield dealt damage
+    "DAMAGE_SHIELD_OTHER",     -- Another unit's damage shield dealt damage
     "AURA_CAST_ON_SELF",       -- Requires CVar NP_EnableAuraCastEvents = 1
     "AURA_CAST_ON_OTHER",      -- Requires CVar NP_EnableAuraCastEvents = 1
     "BUFF_UPDATE_DURATION_SELF",   -- Buff duration refreshed on active player
@@ -639,6 +645,86 @@ function ChronicleLog:SPELL_MISS_OTHER(casterGuid, targetGuid, spellId, missInfo
     self:CheckUnit(casterGuid)
     self:CheckUnit(targetGuid)
     self:Write("MISS", casterGuid, targetGuid, spellId, missInfo)
+end
+
+--- Handles SPELL_DISPEL_BY_SELF events.
+--- Called when the active player dispels a spell from a unit.
+--- Writes a DISPEL event with caster, target, and dispelled spell ID.
+---@param casterGuid string GUID of the caster (active player) who performed the dispel
+---@param targetGuid string GUID of the unit that was dispelled
+---@param spellId number Spell ID of the spell that was dispelled
+function ChronicleLog:SPELL_DISPEL_BY_SELF(casterGuid, targetGuid, spellId)
+    self:CheckUnit(casterGuid)
+    self:CheckUnit(targetGuid)
+    self:Write("DISPEL", casterGuid, targetGuid, spellId)
+end
+
+--- Handles SPELL_DISPEL_BY_OTHER events.
+--- Called when someone other than the active player dispels a spell from a unit.
+--- Writes a DISPEL event with caster, target, and dispelled spell ID.
+---@param casterGuid string GUID of the unit that performed the dispel
+---@param targetGuid string GUID of the unit that was dispelled
+---@param spellId number Spell ID of the spell that was dispelled
+function ChronicleLog:SPELL_DISPEL_BY_OTHER(casterGuid, targetGuid, spellId)
+    self:CheckUnit(casterGuid)
+    self:CheckUnit(targetGuid)
+    self:Write("DISPEL", casterGuid, targetGuid, spellId)
+end
+
+--- Handles ENVIRONMENTAL_DMG_SELF events.
+--- Called when the active player takes environmental damage.
+--- Writes an ENV_DMG event with unit, damage type, amount, absorb, and resist.
+--- Damage types: 0=Exhausted/Fatigue, 1=Drowning, 2=Fall, 3=Lava, 4=Slime, 5=Fire, 6=FallToVoid
+---@param unitGuid string GUID of the unit that took damage (active player)
+---@param dmgType number Environmental damage type (see EnvironmentalDamageType)
+---@param damage number Amount of damage taken
+---@param absorb number Amount of damage absorbed
+---@param resist number Amount of damage resisted
+function ChronicleLog:ENVIRONMENTAL_DMG_SELF(unitGuid, dmgType, damage, absorb, resist)
+    self:CheckUnit(unitGuid)
+    self:Write("ENV_DMG", unitGuid, dmgType, damage, absorb, resist)
+end
+
+--- Handles ENVIRONMENTAL_DMG_OTHER events.
+--- Called when a unit other than the active player takes environmental damage.
+--- Writes an ENV_DMG event with unit, damage type, amount, absorb, and resist.
+--- Damage types: 0=Exhausted/Fatigue, 1=Drowning, 2=Fall, 3=Lava, 4=Slime, 5=Fire, 6=FallToVoid
+---@param unitGuid string GUID of the unit that took damage
+---@param dmgType number Environmental damage type (see EnvironmentalDamageType)
+---@param damage number Amount of damage taken
+---@param absorb number Amount of damage absorbed
+---@param resist number Amount of damage resisted
+function ChronicleLog:ENVIRONMENTAL_DMG_OTHER(unitGuid, dmgType, damage, absorb, resist)
+    self:CheckUnit(unitGuid)
+    self:Write("ENV_DMG", unitGuid, dmgType, damage, absorb, resist)
+end
+
+--- Handles DAMAGE_SHIELD_SELF events.
+--- Called when the active player's damage shield (e.g. Thorns, Fire Shield) deals damage.
+--- Writes a DMG_SHIELD event with shield owner, attacker, damage, and spell school.
+--- Spell schools: 0=Physical, 1=Holy, 2=Fire, 3=Nature, 4=Frost, 5=Shadow, 6=Arcane
+---@param unitGuid string GUID of the unit whose shield dealt damage (active player)
+---@param targetGuid string GUID of the attacker who took the shield damage
+---@param damage number Amount of shield damage dealt
+---@param spellSchool number School of the shield damage (see SpellSchool constants)
+function ChronicleLog:DAMAGE_SHIELD_SELF(unitGuid, targetGuid, damage, spellSchool)
+    self:CheckUnit(unitGuid)
+    self:CheckUnit(targetGuid)
+    self:Write("DMG_SHIELD", unitGuid, targetGuid, damage, spellSchool)
+end
+
+--- Handles DAMAGE_SHIELD_OTHER events.
+--- Called when another unit's damage shield (e.g. Thorns, Fire Shield) deals damage.
+--- Writes a DMG_SHIELD event with shield owner, attacker, damage, and spell school.
+--- Spell schools: 0=Physical, 1=Holy, 2=Fire, 3=Nature, 4=Frost, 5=Shadow, 6=Arcane
+---@param unitGuid string GUID of the unit whose shield dealt damage
+---@param targetGuid string GUID of the attacker who took the shield damage
+---@param damage number Amount of shield damage dealt
+---@param spellSchool number School of the shield damage (see SpellSchool constants)
+function ChronicleLog:DAMAGE_SHIELD_OTHER(unitGuid, targetGuid, damage, spellSchool)
+    self:CheckUnit(unitGuid)
+    self:CheckUnit(targetGuid)
+    self:Write("DMG_SHIELD", unitGuid, targetGuid, damage, spellSchool)
 end
 
 --- Handles AURA_CAST_ON_SELF events.
