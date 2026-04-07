@@ -144,6 +144,9 @@ function ChronicleLog:CheckUnit(guid)
     end
 
     local charm = GetUnitField(guid, "charm")
+    if(charm == "0x0000000000000000") then
+        charm = ""
+    end
     
     -- Get challenges (only meaningful for player)
     local challenges = isMe == 1 and self.units.challenges or "na"
