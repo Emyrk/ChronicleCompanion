@@ -6,6 +6,7 @@ function Chronicle:RegisterSlashCommands()
 	SLASH_CHRONICLE1 = "/chronicle"
 
 	if not IsAddOnLoaded("Chronometer") and not IsAddOnLoaded("Chronometer-TWoW") then
+		// Deprecate this for /clog
 		SLASH_CHRONICLE2 = "/chron"
 	end
 
@@ -14,8 +15,8 @@ function Chronicle:RegisterSlashCommands()
 	end
 
 	SLASH_CLOG1 = "/clog"
-	SlashCmdList["CLOG"] = function()
-		ChronicleLog:OpenOptionsPanel()
+	SlashCmdList["CLOG"] = function(msg)
+		Chronicle:HandleSlashCommand(msg)
 	end
 end
 
@@ -47,8 +48,7 @@ function Chronicle:HandleSlashCommand(msg)
 	if cmd == "help" then
 		self:ShowHelp()
 	elseif cmd == "version" or cmd == "ver" then
-		self:Print("Chronicle version " .. self.version)
-		
+		self:Print("Chronicle version " .. GetAddOnMetadata("ChronicleCompanion", "Version"))
 	elseif cmd == "log" then
 		if(ChronicleLog:IsEnabled()) then
 			local linesWritten = ChronicleLog:Disable()
@@ -81,7 +81,7 @@ function Chronicle:HandleSlashCommand(msg)
 	elseif cmd == "delete" then
 		StaticPopup_Show("CHRONICLELOG_CLEAR_CONFIRM")
 	else
-		self:Print("Unknown command. Type '/chronicle help' for available commands.")
+		ChronicleLog:OpenOptionsPanel()
 	end
 end
 
