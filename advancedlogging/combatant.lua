@@ -129,7 +129,7 @@ function ChronicleLog:GetCombatantInfo(unit)
     end
     
     -- Talents (only available for "player" unit)
-    if UnitIsPlayer(unit) == 1 then
+    if UnitIsUnit(guid, "player") == 1 then
         local talents = { "", "", "" }
         for t = 1, 3 do
             local numTalents = GetNumTalents(t)

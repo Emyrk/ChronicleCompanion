@@ -83,6 +83,9 @@ ChronicleLog.events = {
     
     -- Session events
     "PLAYER_LEAVING_WORLD",        -- Flush logs on logout/disconnect/reload
+
+    -- Unit GUID events
+    "UNIT_INVENTORY_CHANGED_GUID", -- Unit equipment changed (emits COMBATANT_INFO)
 }
 
 -- =============================================================================
@@ -1162,6 +1165,26 @@ function ChronicleLog:CHAT_MSG_SYSTEM(msg)
     -- Check for trade pattern: "Iseut trades item Libram of the Faithful to Milkpress."
     if strfind(msg, "^%w+ trades item") then
         self:Write("LOOT_TRADE", msg)
+    end
+end
+
+-- =============================================================================
+-- Unit GUID Event Handlers
+-- =============================================================================
+
+--- Handles UNIT_INVENTORY_CHANGED_GUID events.
+--- Emits COMBATANT_INFO when a player unit's equipment changes.
+---@param guid string Unit GUID
+---@param isPlayer number 1 if unit is active player, 0 otherwise
+---@param isTarget number 1 if unit is current target, 0 otherwise
+---@param isMouseover number 1 if unit is mouseover, 0 otherwise
+---@param isPet number 1 if unit is player's pet, 0 otherwise
+---@param partyIndex number Party slot (1-4) or 0
+---@param raidIndex number Raid slot (1-40) or 0
+function ChronicleLog:UNIT_INVENTORY_CHANGED_GUID(guid, isPlayer, isTarget, isMouseover, isPet, partyIndex, raidIndex)
+    -- Only emit for player units (NPCs don't have meaningful gear)
+    if UnitIsPlayer(guid) == 1 then
+        self:WriteCombatantInfo(guid)
     end
 end
 
