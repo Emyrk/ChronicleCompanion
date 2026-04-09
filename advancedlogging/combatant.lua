@@ -115,11 +115,32 @@ function ChronicleLog:GetCombatantInfo(unit)
     -- Gear (19 slots)
     info.gear = {}
     local anyGear = false
+    local equippedItems = GetEquippedItems(unit)
+    
     for i = 1, 19 do
         local link = GetInventoryItemLink(unit, i)
         if link then
             anyGear = true
-            info.gear[i] = ParseItemLink(link)
+            local baseData = ParseItemLink(link)  -- "Name;itemId:permEnchant:suffixId:uniqueId"
+            
+            -- Replace itemId/enchants with authoritative values from GetEquippedItems
+            local item = equippedItems and equippedItems[i]
+            if item and baseData then
+                -- Parse: "Name;itemId:permEnchant:suffixId:uniqueId"
+                local _, _, name, suffixId, uniqueId = strfind(baseData, "^(.+);%d+:%d+:([^:]+):([^:]+)$")
+                
+                -- Rebuild with correct values + temp enchant
+                local itemId = item.itemId or 0
+                local permEnchant = item.permanentEnchantId or 0
+                local tempEnchant = item.tempEnchantId or 0
+                suffixId = suffixId or "0"
+                uniqueId = uniqueId or "0"
+                
+                info.gear[i] = name .. ";" .. itemId .. ":" .. permEnchant .. ":" .. suffixId .. ":" .. uniqueId .. ":" .. tempEnchant
+            else
+                -- Fallback: use link data as-is, append 0 for temp enchant
+                info.gear[i] = baseData .. ":0"
+            end
         end
     end
     
