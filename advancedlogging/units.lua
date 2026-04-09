@@ -68,22 +68,30 @@ end
 -- Unit Info Helpers
 -- =============================================================================
 
---- Returns a CSV string of the unit's buffs in format "buffID=stacks,buffID=stacks".
----@param guid string Unit GUID
----@return string buffs CSV of buff IDs and stack counts
-local function GetUnitBuffs(guid)
-    local auras = ""
-    local prefix = ""
-    for i = 1, 31 do
-        local buffTexture, buffApplications, buffID = UnitBuff(guid, i)
-        if not buffTexture then
-            return auras
-        end
-        buffApplications = buffApplications or 1
-        auras = auras .. string.format("%s%d=%d", prefix, buffID, buffApplications)
-        prefix = ","
+--- Returns a CSV string of the unit's auras (buffs and debuffs) in format "spellID=stacks,spellID=stacks".
+--- Uses nampower's GetUnitData to read aura arrays directly from unit fields.
+--- Aura slots 1-32 are buffs, 33-48 are debuffs.
+---@param unitData table Unit data from GetUnitData containing aura, auraApplications arrays
+---@return string auras CSV of aura spell IDs and stack counts
+local function GetUnitAuras(unitData)
+    local auraIds = unitData.aura
+    local auraStacks = unitData.auraApplications
+    
+    if not auraIds then
+        return ""
     end
-    return auras
+    
+    local parts = {}
+    for i = 1, 48 do
+        local spellId = auraIds[i]
+        if spellId and spellId > 0 then
+            local stacks = (auraStacks and auraStacks[i]) or 1
+            if stacks < 1 then stacks = 1 end
+            table.insert(parts, spellId .. "=" .. stacks)
+        end
+    end
+    
+    return table.concat(parts, ",")
 end
 
 -- =============================================================================
@@ -134,7 +142,7 @@ function ChronicleLog:CheckUnit(guid)
     local canCooperate = UnitCanCooperate("player", guid) and 1 or 0
     local level = UnitLevel(guid) or 0
     local maxHealth = UnitHealthMax(guid) or 0
-    local buffs = GetUnitBuffs(guid)
+    local auras = GetUnitAuras(unitData)
     
     -- Check for owner (pets)
     local owner = ""
@@ -155,7 +163,7 @@ function ChronicleLog:CheckUnit(guid)
     self.units.logged[guid] = now
     
     -- Write UNIT_INFO event
-    self:Write("UNIT_INFO", guid, isMe, name, canCooperate, owner, buffs, level, challenges, maxHealth, charm)
+    self:Write("UNIT_INFO", guid, isMe, name, canCooperate, owner, auras, level, challenges, maxHealth, charm)
     
     -- Write COMBATANT_INFO for players (gear, talents, guild)
     if UnitIsPlayer(guid) == 1 then

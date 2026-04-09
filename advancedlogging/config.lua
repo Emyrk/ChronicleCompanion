@@ -609,7 +609,7 @@ function ChronicleLog:RefreshOptionsPanel()
     
     panel.bufferText:SetText("|cffffff00" .. (self.bufferSize or 0) .. " lines|r")
     
-    local inInstance, instanceType = IsInInstance()
+    local inInstance, instanceType = self:IsInInstance()
     local currentRange
     if inInstance then
         if instanceType == "raid" then

@@ -15,6 +15,21 @@ ChronicleLog = {
 -- Delimiter for log output format: TIMESTAMP|EVENT_TYPE|field1|field2|...
 local LOG_SEP = "|"
 
+--- Wrapper for IsInInstance() that excludes battlegrounds.
+--- Battlegrounds return instanceType "pvp" but we treat them as open world.
+---@return boolean inInstance Whether player is in an instance (excluding BGs)
+---@return string instanceType The instance type ("party", "raid", "pvp", "arena", or "none")
+function ChronicleLog:IsInInstance()
+    local inInstance, instanceType = IsInInstance()
+    
+    -- Treat battlegrounds as open world, not instances
+    if instanceType == "pvp" then
+        inInstance = false
+    end
+    
+    return inInstance, instanceType
+end
+
 -- Events to listen for
 ChronicleLog.events = {
     -- "UNIT_CASTEVENT",
@@ -342,8 +357,7 @@ function ChronicleLog:ZONE_CHANGED_NEW_AREA()
         end
     end
     
-    -- IsInInstance returns: inInstance (1/nil), instanceType (string)
-    local inInstance, instanceType = IsInInstance()
+    local inInstance, instanceType = self:IsInInstance()
     local isInInstance = inInstance and true or false
     local isRaid = instanceType == "raid"
     local isDungeon = instanceType == "party"
@@ -432,7 +446,7 @@ function ChronicleLog:WriteZoneInfo(force)
         end
     end
     
-    local inInstance, instanceType = IsInInstance()
+    local inInstance, instanceType = self:IsInInstance()
     local inInstanceNum = inInstance and 1 or 0
     instanceType = instanceType or "none"
     local isGhost = UnitIsGhost("player") and 1 or 0
