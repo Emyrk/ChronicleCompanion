@@ -139,6 +139,11 @@ function ChronicleLog:Enable()
     for _, evt in ipairs(self.events) do
         self.frame:RegisterEvent(evt)
     end
+    
+    -- Update minimap icon
+    if ChronicleMinimapButton then
+        ChronicleMinimapButton:UpdateIcon()
+    end
 end
 
 --- Disables combat logging, unregisters all events, and writes buffer to file.
@@ -156,6 +161,12 @@ function ChronicleLog:Disable()
     
     -- Write buffer to file on disable
     local linesWritten = self:FlushToFile()
+    
+    -- Update minimap icon
+    if ChronicleMinimapButton then
+        ChronicleMinimapButton:UpdateIcon()
+    end
+    
     return linesWritten
 end
 

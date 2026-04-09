@@ -6,7 +6,7 @@ function Chronicle:RegisterSlashCommands()
 	SLASH_CHRONICLE1 = "/chronicle"
 
 	if not IsAddOnLoaded("Chronometer") and not IsAddOnLoaded("Chronometer-TWoW") then
-		// Deprecate this for /clog
+		-- Deprecate this for /clog
 		SLASH_CHRONICLE2 = "/chron"
 	end
 
@@ -50,12 +50,22 @@ function Chronicle:HandleSlashCommand(msg)
 	elseif cmd == "version" or cmd == "ver" then
 		self:Print("Chronicle version " .. GetAddOnMetadata("ChronicleCompanion", "Version"))
 	elseif cmd == "log" then
-		if(ChronicleLog:IsEnabled()) then
-			local linesWritten = ChronicleLog:Disable()
-			self:Print("Combat logging disabled. Wrote " .. linesWritten .. " events to file.")
+		local shouldEnable
+		if arg == "1" or arg == "true" then
+			shouldEnable = true
+		elseif arg == "0" or arg == "false" then
+			shouldEnable = false
 		else
+			-- No arg or invalid arg: toggle
+			shouldEnable = not ChronicleLog:IsEnabled()
+		end
+		
+		if shouldEnable and not ChronicleLog:IsEnabled() then
 			ChronicleLog:Enable()
 			self:Print("Combat logging enabled. Events will be written to file when disabled.")
+		elseif not shouldEnable and ChronicleLog:IsEnabled() then
+			local linesWritten = ChronicleLog:Disable()
+			self:Print("Combat logging disabled. Wrote " .. linesWritten .. " events to file.")
 		end
 	elseif cmd =="config" or cmd == "advlog" or cmd == "advancedlog" then
 		ChronicleLog:OpenOptionsPanel()
@@ -87,7 +97,7 @@ end
 
 function Chronicle:ShowHelp()
 	self:Print("=== Chronicle Commands ===")
-	self:Print("/chronicle log - Toggle advanced combat logging")
+	self:Print("/chronicle log [1|0|true|false] - Toggle or set logging on/off")
 	self:Print("/chronicle save - Save logs to disk")
 	self:Print("/chronicle delete - Delete all logs (disk and memory)")
 	self:Print("/chronicle version - Show addon version")
