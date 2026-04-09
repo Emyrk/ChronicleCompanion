@@ -115,7 +115,6 @@ function ChronicleLog:GetCombatantInfo(unit)
     -- Gear (19 slots)
     info.gear = {}
     local anyGear = false
-    local equippedItems = GetEquippedItems(unit)
     
     for i = 1, 19 do
         local link = GetInventoryItemLink(unit, i)
@@ -123,8 +122,8 @@ function ChronicleLog:GetCombatantInfo(unit)
             anyGear = true
             local baseData = ParseItemLink(link)  -- "Name;itemId:permEnchant:suffixId:uniqueId"
             
-            -- Replace itemId/enchants with authoritative values from GetEquippedItems
-            local item = equippedItems and equippedItems[i]
+            -- Replace itemId/enchants with authoritative values from GetEquippedItem
+            local item = GetEquippedItem(unit, i)
             if item and baseData then
                 -- Parse: "Name;itemId:permEnchant:suffixId:uniqueId"
                 local _, _, name, suffixId, uniqueId = strfind(baseData, "^(.+);%d+:%d+:([^:]+):([^:]+)$")
