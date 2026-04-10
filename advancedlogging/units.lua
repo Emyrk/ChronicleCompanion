@@ -117,6 +117,7 @@ function ChronicleLog:RequestTransmogInfo(playerName)
     
     -- Send addon message to request transmog data (works for both local and other players)
     pendingTransmog[playerName] = {}
+    pendingTransmogTime[playerName] = GetTime()  -- Set timeout so non-responding requests get cleaned up
     SendAddonMessage("TW_CHAT_MSG_WHISPER<" .. playerName .. ">", "INSShowTransmogs", "GUILD")
 end
 
@@ -133,7 +134,7 @@ function ChronicleLog:CHAT_MSG_ADDON(prefix, message, channel, sender)
     -- Strip leading whitespace/tab
     message = string.gsub(message, "^%s+", "")
     
-    -- Parse: INSTransmogs;slotOrMarker;itemId;transmogId
+    -- Parse: INSTransmogs;slotOrMarker;transmogId;itemId
     local parts = {}
     for part in string.gfind(message, "[^;]+") do
         table.insert(parts, part)
@@ -153,10 +154,10 @@ function ChronicleLog:CHAT_MSG_ADDON(prefix, message, channel, sender)
             pendingTransmogTime[sender] = nil
         end
     else
-        -- Data row: slotId;itemId;transmogId
+        -- Data row: slotId;transmogId;itemId (server sends transmog first, then item)
         local slotId = tonumber(marker)
-        local itemId = tonumber(parts[3]) or 0
-        local transmogId = tonumber(parts[4]) or 0
+        local transmogId = tonumber(parts[3]) or 0
+        local itemId = tonumber(parts[4]) or 0
         if slotId then
             -- Initialize if we missed the start message
             if not pendingTransmog[sender] then
