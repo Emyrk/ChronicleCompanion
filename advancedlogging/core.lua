@@ -80,6 +80,7 @@ ChronicleLog.events = {
     -- Chat events
     "CHAT_MSG_LOOT",               -- Loot messages (arg1 = message)
     "CHAT_MSG_SYSTEM",             -- System messages (arg1 = message) - used for trade detection
+    "CHAT_MSG_ADDON",              -- Addon messages (for transmog data from other players)
     
     -- Session events
     "PLAYER_LEAVING_WORLD",        -- Flush logs on logout/disconnect/reload
@@ -104,6 +105,12 @@ function ChronicleLog:Init()
     self.timeOffset = time() - GetTime()
     
     self.frame = CreateFrame("Frame", "ChronicleLogFrame")
+    self.frame:SetScript("OnUpdate", function()
+        -- Flush pending transmog data after timeout
+        if ChronicleLog.enabled then
+            ChronicleLog:FlushPendingTransmog()
+        end
+    end)
     self.frame:SetScript("OnEvent", function()
         local autoSave = (event == "PLAYER_REGEN_ENABLED" and self:GetSetting("autoCombatSave"))
         -- Always process zone changes (for auto-enable/disable even when logging is off)
