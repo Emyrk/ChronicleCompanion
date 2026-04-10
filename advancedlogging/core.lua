@@ -105,7 +105,13 @@ function ChronicleLog:Init()
     self.timeOffset = time() - GetTime()
     
     self.frame = CreateFrame("Frame", "ChronicleLogFrame")
+    local lastTransmogCheck = 0
     self.frame:SetScript("OnUpdate", function()
+        -- Throttle: only check every 0.5 seconds
+        local now = GetTime()
+        if (now - lastTransmogCheck) < 0.5 then return end
+        lastTransmogCheck = now
+        
         -- Flush pending transmog data after timeout
         if ChronicleLog.enabled then
             ChronicleLog:FlushPendingTransmog()
