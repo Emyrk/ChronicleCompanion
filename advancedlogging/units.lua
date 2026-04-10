@@ -14,6 +14,15 @@ ChronicleLog.units = {
 }
 
 -- =============================================================================
+-- Transmog Tracking (Async)
+-- =============================================================================
+
+-- Pending transmog data: pendingTransmog[playerName] = { [slotId] = {itemId, transmogId}, ... }
+local pendingTransmog = {}
+-- Timestamp of last transmog message per player (for timeout-based writing)
+local pendingTransmogTime = {}
+
+-- =============================================================================
 -- Challenge Mode Detection
 -- =============================================================================
 
@@ -95,6 +104,113 @@ local function GetUnitAuras(unitData)
 end
 
 -- =============================================================================
+-- Transmog Functions
+-- =============================================================================
+
+--- Requests transmog info for a player.
+--- Sends addon message and waits for async response via CHAT_MSG_ADDON.
+---@param playerName string Player name to request transmog for
+function ChronicleLog:RequestTransmogInfo(playerName)
+    if not playerName then return end
+    
+    Chronicle:DebugPrint("RequestTransmogInfo: " .. playerName)
+    
+    -- Send addon message to request transmog data (works for both local and other players)
+    pendingTransmog[playerName] = {}
+    pendingTransmogTime[playerName] = GetTime()  -- Set timeout so non-responding requests get cleaned up
+    SendAddonMessage("TW_CHAT_MSG_WHISPER<" .. playerName .. ">", "INSShowTransmogs", "GUILD")
+end
+
+--- Handles CHAT_MSG_ADDON events for transmog data.
+--- Listens for INSTransmogs responses from other players.
+---@param prefix string Addon message prefix
+---@param message string Message content
+---@param channel string Distribution channel
+---@param sender string Sender name
+function ChronicleLog:CHAT_MSG_ADDON(prefix, message, channel, sender)
+    if prefix ~= "TW_CHAT_MSG_WHISPER" then return end
+    if not message or not strfind(message, "INSTransmogs;") then return end
+    
+    -- Strip leading whitespace/tab
+    message = string.gsub(message, "^%s+", "")
+    
+    -- Parse: INSTransmogs;slotOrMarker;transmogId;itemId
+    local parts = {}
+    for part in string.gfind(message, "[^;]+") do
+        table.insert(parts, part)
+    end
+    
+    local marker = parts[2]
+    
+    if marker == "start" then
+        -- Clear/initialize data for this player
+        pendingTransmog[sender] = {}
+        pendingTransmogTime[sender] = GetTime()
+    elseif marker == "end" then
+        -- Write the log and clean up
+        if pendingTransmog[sender] then
+            self:WriteCombatantTransmog(sender, pendingTransmog[sender])
+            pendingTransmog[sender] = nil
+            pendingTransmogTime[sender] = nil
+        end
+    else
+        -- Data row: slotId;transmogId;itemId (server sends transmog first, then item)
+        local slotId = tonumber(marker)
+        local transmogId = tonumber(parts[3]) or 0
+        local itemId = tonumber(parts[4]) or 0
+        if slotId then
+            -- Initialize if we missed the start message
+            if not pendingTransmog[sender] then
+                pendingTransmog[sender] = {}
+            end
+            pendingTransmog[sender][slotId] = { itemId = itemId, transmogId = transmogId }
+            pendingTransmogTime[sender] = GetTime()
+        end
+    end
+end
+
+--- Flushes any pending transmog data that hasn't received new messages for a while.
+--- Call this periodically (e.g., from OnUpdate or a timer).
+function ChronicleLog:FlushPendingTransmog()
+    local now = GetTime()
+    local timeout = 0.5  -- Write after 0.5 seconds of no new messages
+    
+    -- Collect names to flush first (avoid modifying table during iteration)
+    local toFlush = {}
+    for playerName, lastTime in pairs(pendingTransmogTime) do
+        if (now - lastTime) > timeout and pendingTransmog[playerName] then
+            table.insert(toFlush, playerName)
+        end
+    end
+    
+    -- Now flush collected entries
+    for _, playerName in ipairs(toFlush) do
+        self:WriteCombatantTransmog(playerName, pendingTransmog[playerName])
+        pendingTransmog[playerName] = nil
+        pendingTransmogTime[playerName] = nil
+    end
+end
+
+--- Writes a COMBATANT_TRANSMOG log line for a player.
+--- Format: timestamp|COMBATANT_TRANSMOG|playerName|slotId:itemId:transmogId&...
+---@param playerName string Player name
+---@param data table Transmog data: { [slotId] = { itemId, transmogId }, ... }
+function ChronicleLog:WriteCombatantTransmog(playerName, data)
+    if not data then return end
+    
+    Chronicle:DebugPrint("WriteCombatantTransmog: " .. playerName)
+    
+    local parts = {}
+    for slotId, info in pairs(data) do
+        table.insert(parts, slotId .. ":" .. (info.itemId or 0) .. ":" .. (info.transmogId or 0))
+    end
+    
+    if table.getn(parts) > 0 then
+        self:Write("COMBATANT_TRANSMOG", playerName, table.concat(parts, "&"))
+    end
+end
+
+-- =============================================================================
 -- Core Functions
 -- =============================================================================
 
@@ -168,6 +284,8 @@ function ChronicleLog:CheckUnit(guid)
     -- Write COMBATANT_INFO for players (gear, talents, guild)
     if UnitIsPlayer(guid) == 1 then
         self:WriteCombatantInfo(guid)
+        -- Request transmog info async (fires COMBATANT_TRANSMOG when response arrives)
+        self:RequestTransmogInfo(name)
     end
 end
 
