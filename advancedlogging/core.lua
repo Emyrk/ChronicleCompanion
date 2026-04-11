@@ -1149,22 +1149,51 @@ end
 -- =============================================================================
 
 --- Handles CHAT_MSG_LOOT events.
---- Message format: "You receive loot: [Item]." or "PlayerName receives loot: [Item]."
+--- Covers multiple message formats:
+---   "You receive loot: [Item]."        / "PlayerName receives loot: [Item]."
+---   "You won: [Item]"                  / "PlayerName won: [Item]"
+---   "You receive item: [Item]."        (pushed/auto-distributed loot)
+---   "You create: [Item]."              (crafted items)
 --- Writes a LOOT event with unit name and item link.
 ---@param msg string The loot message
 function ChronicleLog:CHAT_MSG_LOOT(msg)
     if not msg then return end
-    
-    -- Parse "You receive loot:" or "PlayerName receives loot:"
-    -- Pattern captures the name (or "You") and the item link
-    local _, _, looter, itemLink = strfind(msg, "^(.+) receives? loot: (.+)%.$")
+
+    local looter, itemLink
+
+    -- Pattern 1: "You receive loot: [Item]." / "PlayerName receives loot: [Item]."
+    _, _, looter, itemLink = strfind(msg, "^(.+) receives? loot: (.+)%.$")
+
+    -- Pattern 2: "You won: [Item]" / "PlayerName won: [Item]" (group loot rolls)
+    if not looter then
+        _, _, looter, itemLink = strfind(msg, "^(.+) won: (.+)")
+        if looter and itemLink then
+            -- Strip trailing no-spam annotation: " |cff818181(Need - 95)|r"
+            local _, _, cleanLink = strfind(itemLink, "^(.-) |cff818181")
+            if cleanLink then
+                itemLink = cleanLink
+            end
+        end
+    end
+
+    -- Pattern 3: "You receive item: [Item]." (pushed/distributed loot)
+    if not looter then
+        _, _, looter, itemLink = strfind(msg, "^(.+) receives? item: (.+)%.$")
+    end
+
+    -- Pattern 4: "You create: [Item]." (crafted items)
+    if not looter then
+        _, _, looter, itemLink = strfind(msg, "^(.+) creates?: (.+)%.$")
+    end
+
     if not looter then return end
-    
+
     -- Convert "You" to player name
     if looter == "You" then
         looter = UnitName("player") or "You"
     end
-    
+
+    Chronicle:DebugPrint("LOOT: " .. looter .. " - " .. itemLink)
     self:Write("LOOT", looter, itemLink)
 end
 
