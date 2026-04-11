@@ -87,6 +87,9 @@ ChronicleLog.events = {
 
     -- Unit GUID events
     "UNIT_INVENTORY_CHANGED_GUID", -- Unit equipment changed (emits COMBATANT_INFO)
+
+    -- Raid target events
+    -- "RAID_TARGET_UPDATE",       -- Raid target icon changed on a unit (no payload, needs GetRaidTargetIndex)
 }
 
 -- =============================================================================
@@ -492,6 +495,15 @@ function ChronicleLog:UNIT_DIED(guid)
     self:CheckUnit(guid)
     self:Write("DEATH", guid)
 end
+
+--- Handles RAID_TARGET_UPDATE events.
+--- Called when raid target icons are set or removed on units.
+--- Payload: No args. The event is just a signal. Use GetRaidTargetIndex(unit) to
+--- query current marks on units (returns 1-8 for icons, nil for no mark).
+--- TODO: Implement by scanning raid/party targets on fire, logging mark changes.
+-- function ChronicleLog:RAID_TARGET_UPDATE()
+--     self:Write("RAID_TARGET")
+-- end
 
 --- Handles PLAYER_REGEN_DISABLED events.
 --- Called when the player enters combat (loses regen).
