@@ -407,8 +407,12 @@ function ChronicleLog:CreateOptionsPanel()
     -- =========================================================================
     -- UI Settings (Left Column)
     -- =========================================================================
+    local minimapHeader = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    minimapHeader:SetPoint("TOPLEFT", leftCol, yLeft + 30)
+    minimapHeader:SetText("Minimap Options")
+    
     local minimapIconCheck = CreateFrame("CheckButton", "ChronicleLogMinimapIcon", panel, "UICheckButtonTemplate")
-    minimapIconCheck:SetPoint("TOPLEFT", leftCol, yLeft + 10)
+    minimapIconCheck:SetPoint("TOPLEFT", leftCol, yLeft + 30 - 18)
     getglobal(minimapIconCheck:GetName() .. "Text"):SetText("Show Minimap Icon")
     minimapIconCheck:SetScript("OnClick", function()
         local show = (this:GetChecked() == 1)
