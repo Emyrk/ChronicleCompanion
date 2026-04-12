@@ -168,6 +168,17 @@ end
 -- Initialization
 -- =============================================================================
 
+function ChronicleMinimapButton:SetShown(show)
+    if show then
+        self.button:Show()
+    else
+        self.button:Hide()
+    end
+end
+
 function ChronicleMinimapButton:Init()
     self:Create()
+    if ChronicleLog:GetSetting("showMinimapIcon") == false then
+        self.button:Hide()
+    end
 end

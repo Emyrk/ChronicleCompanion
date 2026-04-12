@@ -90,6 +90,16 @@ function Chronicle:HandleSlashCommand(msg)
 		end
 	elseif cmd == "delete" then
 		StaticPopup_Show("CHRONICLELOG_CLEAR_CONFIRM")
+	elseif cmd == "minimap" then
+		local current = ChronicleLog:GetSetting("showMinimapIcon")
+		local newVal = not current
+		ChronicleLog:SetSetting("showMinimapIcon", newVal)
+		ChronicleMinimapButton:SetShown(newVal)
+		if newVal then
+			self:Print("Minimap icon shown.")
+		else
+			self:Print("Minimap icon hidden. Type /chronicle minimap to show it again.")
+		end
 	else
 		ChronicleLog:OpenOptionsPanel()
 	end
@@ -102,6 +112,7 @@ function Chronicle:ShowHelp()
 	self:Print("/chronicle delete - Delete all logs (disk and memory)")
 	self:Print("/chronicle version - Show addon version")
 	self:Print("/chronicle config - Open options panel")
+	self:Print("/chronicle minimap - Toggle minimap icon visibility")
 	self:Print("/chronicle help - Show this help")
 	self:Print("/clog - Open chronicle log options")
 end

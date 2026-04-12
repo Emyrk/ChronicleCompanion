@@ -15,6 +15,7 @@ local DEFAULTS = {
     autoEnableInDungeon = true,
     showLogReminder = true,
     autoCombatSave = false,
+    showMinimapIcon = true,
     rangeDefault = 40,
     rangeDungeon = 100,
     rangeRaid = 200,
@@ -404,6 +405,21 @@ function ChronicleLog:CreateOptionsPanel()
     yRight = yRow3
     
     -- =========================================================================
+    -- UI Settings (Left Column)
+    -- =========================================================================
+    local minimapIconCheck = CreateFrame("CheckButton", "ChronicleLogMinimapIcon", panel, "UICheckButtonTemplate")
+    minimapIconCheck:SetPoint("TOPLEFT", leftCol, yLeft + 10)
+    getglobal(minimapIconCheck:GetName() .. "Text"):SetText("Show Minimap Icon")
+    minimapIconCheck:SetScript("OnClick", function()
+        local show = (this:GetChecked() == 1)
+        ChronicleLog:SetSetting("showMinimapIcon", show)
+        ChronicleMinimapButton:SetShown(show)
+    end)
+    panel.minimapIconCheck = minimapIconCheck
+    
+    yLeft = yLeft - 20
+    
+    -- =========================================================================
     -- SECTION 5: Debug (Left Column)
     -- =========================================================================
     local debugHeader = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -644,6 +660,8 @@ function ChronicleLog:RefreshOptionsPanel()
     panel.reminderCheck:SetChecked(self:GetSetting("showLogReminder"))
     panel.autoCombatSaveCheck:SetChecked(self:GetSetting("autoCombatSave"))
     panel.debugCheck:SetChecked(self:GetSetting("debugMode"))
+    panel.minimapIconCheck:SetChecked(self:GetSetting("showMinimapIcon"))
+    ChronicleMinimapButton:SetShown(self:GetSetting("showMinimapIcon"))
     
     local autoEnabled = self:GetSetting("autoEnableInRaid") and self:GetSetting("autoEnableInDungeon")
     if autoEnabled then
