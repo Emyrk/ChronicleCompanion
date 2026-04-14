@@ -90,6 +90,16 @@ function Chronicle:HandleSlashCommand(msg)
 		end
 	elseif cmd == "delete" then
 		StaticPopup_Show("CHRONICLELOG_CLEAR_CONFIRM")
+	elseif cmd == "ids" then
+		local ids = ChronicleCompanionCharDB and ChronicleCompanionCharDB.lastInstanceIds
+		if not ids or not next(ids) then
+			self:Print("No saved instance IDs.")
+		else
+			self:Print("=== Saved Instance IDs ===")
+			for zone, id in pairs(ids) do
+				self:Print(zone .. ": " .. id)
+			end
+		end
 	elseif cmd == "minimap" then
 		local current = ChronicleLog:GetSetting("showMinimapIcon")
 		local newVal = not current
@@ -112,6 +122,7 @@ function Chronicle:ShowHelp()
 	self:Print("/chronicle delete - Delete all logs (disk and memory)")
 	self:Print("/chronicle version - Show addon version")
 	self:Print("/chronicle config - Open options panel")
+	self:Print("/chronicle ids - Show saved instance IDs")
 	self:Print("/chronicle minimap - Toggle minimap icon visibility")
 	self:Print("/chronicle help - Show this help")
 	self:Print("/clog - Open chronicle log options")

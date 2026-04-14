@@ -31,6 +31,8 @@ local DEFAULTS = {
 function ChronicleLog:InitConfig()
     if not ChronicleCompanionDB then ChronicleCompanionDB = {} end
     if not ChronicleCompanionDB.advancedLog then ChronicleCompanionDB.advancedLog = {} end
+    if not ChronicleCompanionCharDB then ChronicleCompanionCharDB = {} end
+    if not ChronicleCompanionCharDB.lastInstanceIds then ChronicleCompanionCharDB.lastInstanceIds = {} end
     for key, value in pairs(DEFAULTS) do
         if ChronicleCompanionDB.advancedLog[key] == nil then
             ChronicleCompanionDB.advancedLog[key] = value
@@ -539,36 +541,8 @@ function ChronicleLog:CreateOptionsPanel()
     moveButton:SetScript("OnClick", function()
         local suffix = moveEditBox:GetText()
         if not suffix or suffix == "" then return end
-        
-        local playerName = UnitName("player") or "Unknown"
-        local currentFile = "Chronicle_" .. playerName .. ".txt"
-        local timestamp = time()
-        local newFile = "Chronicle_" .. playerName .. "_" .. suffix .. "_" .. timestamp .. ".txt"
-        
-        -- Read existing file content and combine with buffer
-        local existing = ChronicleFile:ReadFile(currentFile) or ""
-        local bufferContent = ""
-        if ChronicleLog.bufferSize > 0 then
-            bufferContent = table.concat(ChronicleLog.buffer, "\n")
-            if existing ~= "" then existing = existing .. "\n" end
-        end
-        
-        -- Write to new archive file and clear current file
-        ChronicleFile:WriteFile(newFile, existing .. bufferContent)
-        ChronicleFile:WriteFile(currentFile, "")
-        ChronicleLog.buffer = {}
-        ChronicleLog.bufferSize = 0
-        
-        Chronicle:Print("Moved logs to: " .. newFile)
+        ChronicleLog:ArchiveLogs(suffix)
         moveEditBox:SetText("")
-        
-        -- Reset state for existing logs
-        ChronicleLog:ClearBuffer()
-        ChronicleLog:PurgeUnits()
-        -- Write fresh zone info to start the new log (bypass enabled check)
-        ChronicleLog:WriteZoneInfo(true)
-
-        ChronicleLog:RefreshOptionsPanel()
     end)
     
     yRight = yRight - 26
@@ -590,20 +564,78 @@ function ChronicleLog:CreateOptionsPanel()
     tinsert(UISpecialFrames, "ChronicleLogOptionsPanel")
 end
 
+-- =============================================================================
+-- Log Management Functions
+-- =============================================================================
+
+--- Archives current logs to a backup file with the given suffix, then clears logs.
+--- @param suffix string - suffix for the backup filename (e.g. "backup" or a user-entered label)
+function ChronicleLog:ArchiveLogs(suffix)
+    local playerName = UnitName("player") or "Unknown"
+    local currentFile = "Chronicle_" .. playerName .. ".txt"
+    local timestamp = time()
+    local newFile = "Chronicle_" .. playerName .. "_" .. suffix .. "_" .. timestamp .. ".txt"
+
+    local existing = ChronicleFile:ReadFile(currentFile) or ""
+    local bufferContent = ""
+    if self.bufferSize > 0 then
+        bufferContent = table.concat(self.buffer, "\n")
+        if existing ~= "" then existing = existing .. "\n" end
+    end
+
+    ChronicleFile:WriteFile(newFile, existing .. bufferContent)
+    ChronicleFile:WriteFile(currentFile, "")
+    self:ClearBuffer()
+    self:PurgeUnits()
+    ChronicleCompanionCharDB.lastInstanceIds = {}
+    self:WriteZoneInfo(true)
+    Chronicle:Print("Archived logs to: " .. newFile)
+    self:RefreshOptionsPanel()
+    return newFile
+end
+
+--- Deletes all current logs (disk and memory).
+function ChronicleLog:DeleteLogs()
+    local filename = "Chronicle_" .. (UnitName("player") or "Unknown") .. ".txt"
+    ChronicleFile:WriteFile(filename, "")
+    self:ClearBuffer()
+    self:PurgeUnits()
+    ChronicleCompanionCharDB.lastInstanceIds = {}
+    self:WriteZoneInfo(true)
+    Chronicle:Print("Deleted all logs: " .. filename)
+    self:RefreshOptionsPanel()
+end
+
+-- Stale instance ID warning popup
+StaticPopupDialogs["CHRONICLELOG_STALE_INSTANCE"] = {
+    text = "You have logs from a previous instance ID of %s. You should delete old logs when starting a new raid.\n\n",
+    button1 = "Archive",
+    button2 = "Delete",
+    button3 = "Ignore",
+    OnAccept = function()
+        ChronicleLog:ArchiveLogs("backup")
+    end,
+    OnCancel = function()
+        ChronicleLog:DeleteLogs()
+    end,
+    OnAlt = function()
+        -- Do Nothing
+        ChronicleCompanionCharDB.lastInstanceIds = {}
+    end,
+    showAlert = 1,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
 -- Clear confirmation popup
 StaticPopupDialogs["CHRONICLELOG_CLEAR_CONFIRM"] = {
     text = "Are you sure you want to delete all logs (disk and memory)?",
     button1 = "Yes, Delete",
     button2 = "Cancel",
     OnAccept = function()
-        local filename = "Chronicle_" .. (UnitName("player") or "Unknown") .. ".txt"
-        ChronicleFile:WriteFile(filename, "")
-        ChronicleLog:ClearBuffer()
-        ChronicleLog:PurgeUnits()
-        -- Write fresh zone info to start the new log (bypass enabled check)
-        ChronicleLog:WriteZoneInfo(true)
-        Chronicle:Print("Deleted all logs: " .. filename)
-        ChronicleLog:RefreshOptionsPanel()
+        ChronicleLog:DeleteLogs()
     end,
     timeout = 0,
     whileDead = true,

@@ -464,14 +464,46 @@ function ChronicleLog:WriteZoneInfo(force)
             break
         end
     end
-    
+
     local inInstance, instanceType = self:IsInInstance()
     local inInstanceNum = inInstance and 1 or 0
     instanceType = instanceType or "none"
     local isGhost = UnitIsGhost("player") and 1 or 0
+
+    if inInstance and instanceType == 'raid' then
+        -- Check for stale instance ID (different raid lockout)
+        local lastId = ChronicleCompanionCharDB.lastInstanceIds[zoneLower]
+        if lastId and lastId > 0 then
+            -- We are saved to something. Now detect if we are in that save, or a new one.
+            if instanceId ~= lastId then
+                StaticPopup_Show("CHRONICLELOG_STALE_INSTANCE", zoneName)
+            end
+        end
+        -- Always save the latest
+        ChronicleCompanionCharDB.lastInstanceIds[zoneLower] = instanceId
+    end
     
     self:WriteHeader()
     self:Write("ZONE_INFO", zoneName, instanceId, inInstanceNum, instanceType, isGhost)
+end
+
+--- Updates the saved instance ID for the current zone.
+--- Called on combat end to pick up newly-acquired lockout IDs (e.g. after first boss kill).
+--- No popup logic — just a silent DB write.
+function ChronicleLog:UpdateInstanceId()
+    local inInstance, instanceType = self:IsInInstance()
+    if not inInstance or instanceType ~= 'raid' then return end
+
+    local zoneName = GetRealZoneText() or ""
+    local zoneLower = strlower(zoneName)
+
+    for i = 1, GetNumSavedInstances() do
+        local instanceName, savedId = GetSavedInstanceInfo(i)
+        if zoneLower == strlower(instanceName) then
+            ChronicleCompanionCharDB.lastInstanceIds[zoneLower] = savedId
+            return
+        end
+    end
 end
 
 --- Handles UNIT_CASTEVENT events.
@@ -517,6 +549,7 @@ end
 --- Writes a COMBAT_END event with no additional fields.
 function ChronicleLog:PLAYER_REGEN_ENABLED()
     self:Write("COMBAT_END")
+    self:UpdateInstanceId()
 end
 
 --- Handles AUTO_ATTACK_SELF events.

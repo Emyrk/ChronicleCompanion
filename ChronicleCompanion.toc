@@ -1,10 +1,11 @@
 ## Interface: 11200
 ## Title: ChronicleCompanion
 ## Notes: Use with the website Chronicle
-## Version: 0.23
+## Version: 0.24
 ## DefaultState: enabled
 ## Author: Emyrk
 ## SavedVariables: ChronicleCompanionDB
+## SavedVariablesPerCharacter: ChronicleCompanionCharDB
 ## OptionalDeps: SuperWowCombatLogger, Chronometer, Chronometer-TWoW
 
 
