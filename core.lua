@@ -40,6 +40,7 @@ function Chronicle:OnEvent(event, ...)
 		if addonName == "ChronicleCompanion" then
 			self.chronicleCompanionLoaded = true
 			self:Init()
+			ChronicleMinimapButton:SetShown(ChronicleLog:GetSetting("showMinimapIcon") ~= false)
 			self:Print("Chronicle v" .. GetAddOnMetadata("ChronicleCompanion", "Version") .. " loaded. Type /chronicle help for commands.")
 		end
 		-- local existing = LoggingCombat()

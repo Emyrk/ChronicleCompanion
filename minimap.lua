@@ -178,7 +178,4 @@ end
 
 function ChronicleMinimapButton:Init()
     self:Create()
-    if ChronicleLog:GetSetting("showMinimapIcon") == false then
-        self.button:Hide()
-    end
 end

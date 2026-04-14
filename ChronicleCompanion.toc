@@ -1,7 +1,7 @@
 ## Interface: 11200
 ## Title: ChronicleCompanion
 ## Notes: Use with the website Chronicle
-## Version: 0.24
+## Version: 0.25
 ## DefaultState: enabled
 ## Author: Emyrk
 ## SavedVariables: ChronicleCompanionDB
