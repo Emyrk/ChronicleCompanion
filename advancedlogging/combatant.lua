@@ -14,16 +14,8 @@ local function GetPetUnit(unit)
     if strfind(unit, "pet") then
         return nil  -- Already a pet unit
     end
-    
-    if unit == "player" then
-        return "pet"
-    elseif strfind(unit, "raid") then
-        return "raidpet" .. strsub(unit, 5)
-    elseif strfind(unit, "party") then
-        return "partypet" .. strsub(unit, 6)
-    end
-    
-    return nil
+
+    return unit .. "pet"
 end
 
 --- Extracts item string and name from an inventory item link.
