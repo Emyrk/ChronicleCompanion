@@ -261,11 +261,7 @@ function ChronicleLog:CheckUnit(guid)
     local auras = GetUnitAuras(unitData)
     
     -- Check for owner (pets)
-    local owner = ""
-    local ownerExists, ownerGuid = UnitExists(guid .. "owner")
-    if ownerExists and ownerGuid then
-        owner = ownerGuid
-    end
+    local ownerGuid = GetUnitGUID(guid .. "owner")
 
     local charm = GetUnitField(guid, "charm")
     if(charm == "0x0000000000000000") then
@@ -279,7 +275,7 @@ function ChronicleLog:CheckUnit(guid)
     self.units.logged[guid] = now
     
     -- Write UNIT_INFO event
-    self:Write("UNIT_INFO", guid, isMe, name, canCooperate, owner, auras, level, challenges, maxHealth, charm)
+    self:Write("UNIT_INFO", guid, isMe, name, canCooperate, ownerGuid, auras, level, challenges, maxHealth, charm)
     
     -- Write COMBATANT_INFO for players (gear, talents, guild)
     if UnitIsPlayer(guid) == 1 then
