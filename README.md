@@ -1,8 +1,16 @@
+<p align="center">
+  <a href="https://chronicleclassic.com">
+    <img src="assets/ChronicleLogoCenter.svg" alt="ChronicleClassic.com" width="400" />
+  </a>
+</p>
+
 # ChronicleCompanion
 
-A World of Warcraft addon that replaces combat logging with enriched unit metadata for use with [Chronicle](https://github.com/Emyrk/chronicle).
+> *Every raid tells a story. Chronicle helps you read it.*
 
-Upload your enriched combat logs at [chronicleclassic.com](https://chronicleclassic.com).
+The official companion addon for **[ChronicleClassic.com](https://chronicleclassic.com)** — created and maintained by the Chronicle team. ChronicleCompanion enriches your combat logs with extended unit metadata so Chronicle can transform them into clear, actionable insights for raid leaders.
+
+Upload your logs at **[chronicleclassic.com](https://chronicleclassic.com)**.
 
 ## Features
 
@@ -43,7 +51,7 @@ Type `/chron save` to save the logs to disk.
 
 #### 4. Upload the file
 
-Upload `<TurtleWoWFolder>/Imports/Chronicle_<character_name>.txt` to [chronicleclassic.com](https://chronicleclassic.com).
+Upload `<TurtleWoWFolder>/Imports/Chronicle_<character_name>.txt` to **[ChronicleClassic.com](https://chronicleclassic.com)**.
 
 ### Slash Commands
 
@@ -66,8 +74,8 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 
 ## Author
 
-**Emyrk**
+**Emyrk** · Creator of [ChronicleClassic.com](https://chronicleclassic.com)
 
 ---
 
-_Made for [Chronicle](https://chronicleclassic.com)_ 📜
+_ChronicleCompanion is the official addon for [ChronicleClassic.com](https://chronicleclassic.com) — every raid tells a story._ 📜
