@@ -10,6 +10,7 @@
 ChronicleLog.units = {
     logged = {},
     staleTimeout = 300,
+    unknownRetryTimeout = 10,  -- retry "Unknown" names after 10 seconds
     challenges = "na",
 }
 
@@ -261,7 +262,7 @@ function ChronicleLog:CheckUnit(guid)
     if not name then
         return
     end
-    
+
     -- Gather unit info
     local isMe = UnitIsUnit(guid, "player") and 1 or 0
     local canCooperate = UnitCanCooperate("player", guid) and 1 or 0
@@ -282,7 +283,11 @@ function ChronicleLog:CheckUnit(guid)
     
     -- Mark as logged
     self.units.logged[guid] = now
-    
+    if name == "Unknown" or name == "" then
+        -- This will re-request the missing name on the next CheckUnit after 10s instead
+        self.units.logged[guid] = now - self.units.staleTimeout + self.units.unknownRetryTimeout
+    end
+
     -- Write UNIT_INFO event
     self:Write("UNIT_INFO", guid, isMe, name, canCooperate, ownerGuid, auras, level, challenges, maxHealth, charm)
     
