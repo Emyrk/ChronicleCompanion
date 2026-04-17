@@ -1,7 +1,7 @@
 ## Interface: 11200
 ## Title: ChronicleCompanion
 ## Notes: Use with the website Chronicle
-## Version: 0.27
+## Version: 0.28
 ## DefaultState: enabled
 ## Author: Emyrk
 ## SavedVariables: ChronicleCompanionDB
@@ -16,6 +16,7 @@ minimap.lua
 advancedlogging\core.lua
 advancedlogging\units.lua
 advancedlogging\combatant.lua
+advancedlogging\talents.lua
 advancedlogging\config.lua
 
 core.lua

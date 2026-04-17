@@ -155,6 +155,12 @@ function ChronicleLog:GetCombatantInfo(unit)
         if strlen(talentStr) > 10 then
             info.talents = talentStr
         end
+    else
+        -- Use cached talents from inspection protocol for other players
+        info.talents = self:GetCachedTalents(name)
+        if info.talents == "" then
+            info.talents = nil
+        end
     end
     
     return info

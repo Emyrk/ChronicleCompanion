@@ -600,6 +600,7 @@ function ChronicleLog:DeleteLogs()
     ChronicleFile:WriteFile(filename, "")
     self:ClearBuffer()
     self:PurgeUnits()
+    self:PurgeTalentCache()
     ChronicleCompanionCharDB.lastInstanceIds = {}
     self:WriteZoneInfo(true)
     Chronicle:Print("Deleted all logs: " .. filename)
