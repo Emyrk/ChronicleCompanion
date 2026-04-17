@@ -38,6 +38,12 @@ function ChronicleLog:InitConfig()
             ChronicleCompanionDB.advancedLog[key] = value
         end
     end
+    -- One-time migration: force autoCombatSave on (was previously defaulted off)
+    if not ChronicleCompanionDB.advancedLog._migrated_autoCombatSave then
+        ChronicleCompanionDB.advancedLog.autoCombatSave = true
+        ChronicleCompanionDB.advancedLog._migrated_autoCombatSave = true
+    end
+
 end
 
 function ChronicleLog:GetSetting(key)
