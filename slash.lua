@@ -100,6 +100,12 @@ function Chronicle:HandleSlashCommand(msg)
 				self:Print(zone .. ": " .. id)
 			end
 		end
+	elseif cmd == "inspect" then
+		if arg == "" then
+			self:Print("Usage: /chronicle inspect <player name>")
+		else
+			ChronicleLog:ForceInspectPlayer(arg)
+		end
 	elseif cmd == "minimap" then
 		local current = ChronicleLog:GetSetting("showMinimapIcon")
 		local newVal = not current
@@ -123,6 +129,7 @@ function Chronicle:ShowHelp()
 	self:Print("/chronicle version - Show addon version")
 	self:Print("/chronicle config - Open options panel")
 	self:Print("/chronicle ids - Show saved instance IDs")
+	self:Print("/chronicle inspect <name> - Force talent inspection of a player")
 	self:Print("/chronicle minimap - Toggle minimap icon visibility")
 	self:Print("/chronicle help - Show this help")
 	self:Print("/clog - Open chronicle log options")

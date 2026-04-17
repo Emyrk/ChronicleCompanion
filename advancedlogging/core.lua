@@ -115,9 +115,13 @@ function ChronicleLog:Init()
         if (now - lastTransmogCheck) < 0.5 then return end
         lastTransmogCheck = now
         
-        -- Flush pending transmog data after timeout
         if ChronicleLog.enabled then
+            -- Flush pending transmog data after timeout
             ChronicleLog:FlushPendingTransmog()
+            -- Process talent inspection queue
+            ChronicleLog:ProcessTalentQueue()
+            -- Periodically queue raid/party members for talent refresh
+            ChronicleLog:QueueRaidTalentRefresh()
         end
     end)
     self.frame:SetScript("OnEvent", function()
@@ -955,6 +959,8 @@ end
 function ChronicleLog:DEBUFF_ADDED_SELF(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
     self:CheckUnit(guid)
     self:Write("DEBUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    
+    self:HandleTalentReset(guid, spellId)
 end
 
 --- Handles DEBUFF_REMOVED_SELF events.
@@ -985,6 +991,8 @@ end
 function ChronicleLog:DEBUFF_ADDED_OTHER(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
     self:CheckUnit(guid)
     self:Write("DEBUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    
+    self:HandleTalentReset(guid, spellId)
 end
 
 --- Handles DEBUFF_REMOVED_OTHER events.

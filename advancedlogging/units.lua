@@ -128,11 +128,20 @@ end
 ---@param channel string Distribution channel
 ---@param sender string Sender name
 function ChronicleLog:CHAT_MSG_ADDON(prefix, message, channel, sender)
-    if prefix ~= "TW_CHAT_MSG_WHISPER" then return end
-    if not message or not strfind(message, "INSTransmogs;") then return end
+    if not message then return end
     
-    -- Strip leading whitespace/tab
+    if prefix ~= "TW_CHAT_MSG_WHISPER" then return end
+    
+    -- Strip leading whitespace/tab (server prepends \t to messages)
     message = string.gsub(message, "^%s+", "")
+    
+    -- Route talent inspection messages to talent handler
+    if strfind(message, "^INSTalent") then
+        self:HandleTalentAddonMessage(message, sender)
+        return
+    end
+    
+    if not strfind(message, "INSTransmogs;") then return end
     
     -- Parse: INSTransmogs;slotOrMarker;transmogId;itemId
     local parts = {}
@@ -282,6 +291,8 @@ function ChronicleLog:CheckUnit(guid)
         self:WriteCombatantInfo(guid)
         -- Request transmog info async (fires COMBATANT_TRANSMOG when response arrives)
         self:RequestTransmogInfo(name)
+        -- Queue talent inspection (will be skipped if recently inspected)
+        self:QueueTalentInspection(guid)
     end
 end
 
