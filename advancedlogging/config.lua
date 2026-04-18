@@ -97,10 +97,7 @@ function ChronicleLog:CheckVersion(name)
         local ok, buildTime = pcall(UnitXP, "version", "coffTimeDateStamp")
         if ok and buildTime then version = tostring(buildTime) end
     elseif name == "nampower" then
-        if GetNampowerVersion then
-            local major, minor, patch = GetNampowerVersion()
-            if major then version = major .. "." .. (minor or 0) .. "." .. (patch or 0) end
-        end
+        version = Chronicle_NampowerVersion()
     end
     
     if not version then

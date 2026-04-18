@@ -51,3 +51,13 @@ function ChronicleCompareVersion(v1, v2)
     end
     return 0
 end
+
+
+function Chronicle_NampowerVersion()
+    local version = ""
+    if GetNampowerVersion then
+        local major, minor, patch = GetNampowerVersion()
+        if major then version = major .. "." .. (minor or 0) .. "." .. (patch or 0) end
+    end
+    return version
+end
