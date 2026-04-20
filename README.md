@@ -6,7 +6,7 @@
 
 # ChronicleCompanion
 
-> *Every raid tells a story. Chronicle helps you read it.*
+> _Every raid tells a story. Chronicle helps you read it._
 
 The official companion addon for **[ChronicleClassic.com](https://chronicleclassic.com)** — created and maintained by the Chronicle team. ChronicleCompanion enriches your combat logs with extended unit metadata so Chronicle can transform them into clear, actionable insights for raid leaders.
 
@@ -19,10 +19,7 @@ Upload your logs at **[chronicleclassic.com](https://chronicleclassic.com)**.
 
 ## Requirements
 
-- [SuperWoW](https://github.com/balakethelock/SuperWoW)
 - [Nampower](https://gitea.com/avitasia/nampower)
-- [UnitXP3](https://codeberg.org/konaka/UnitXP_SP3)
-- ChronicleCompanion Addon
 
 You can still use [SuperWoWCombatLogger](https://github.com/pepopo978/SuperWowCombatLogger) for Turtlogs compatibility.
 

@@ -4,8 +4,6 @@
 
 -- Minimum required versions for dependencies (empty string = no minimum)
 local MIN_VERSIONS = {
-    superwow = "1.5",         
-    unitxp3 = "1771083771",          
     nampower = "3.4.0",       
 }
 
@@ -68,7 +66,7 @@ end
 local function CompareVersions(v1, v2)
     if not v1 or not v2 or v2 == "" then return true end
     
-    -- Try numeric comparison first (for timestamps like UnitXP3)
+    -- Try numeric comparison first (for numeric version strings)
     local n1, n2 = tonumber(v1), tonumber(v2)
     if n1 and n2 then return n1 >= n2 end
     
@@ -91,11 +89,6 @@ function ChronicleLog:CheckVersion(name)
     
     if name == "addon" then
         version = GetAddOnMetadata("ChronicleCompanion", "Version")
-    elseif name == "superwow" then
-        version = SUPERWOW_VERSION
-    elseif name == "unitxp3" then
-        local ok, buildTime = pcall(UnitXP, "version", "coffTimeDateStamp")
-        if ok and buildTime then version = tostring(buildTime) end
     elseif name == "nampower" then
         version = Chronicle_NampowerVersion()
     end
@@ -115,8 +108,8 @@ end
 function ChronicleLog:CheckDependencies()
     local problems = {}
     
-    local deps = { "superwow", "unitxp3", "nampower" }
-    local names = { superwow = "SuperWoW", unitxp3 = "UnitXP3", nampower = "Nampower" }
+    local deps = { "nampower" }
+    local names = { nampower = "Nampower" }
     
     for _, dep in ipairs(deps) do
         local version, color = self:CheckVersion(dep)
@@ -306,24 +299,6 @@ function ChronicleLog:CreateOptionsPanel()
     local addonVerText = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     addonVerText:SetPoint("LEFT", addonVerLabel, "RIGHT", 5, 0)
     panel.addonVerText = addonVerText
-    
-    yLeft = yLeft - 14
-    
-    local swVerLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    swVerLabel:SetPoint("TOPLEFT", leftCol, yLeft)
-    swVerLabel:SetText("SuperWoW:")
-    local swVerText = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    swVerText:SetPoint("LEFT", swVerLabel, "RIGHT", 5, 0)
-    panel.swVerText = swVerText
-    
-    yLeft = yLeft - 14
-    
-    local xp3VerLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    xp3VerLabel:SetPoint("TOPLEFT", leftCol, yLeft)
-    xp3VerLabel:SetText("UnitXP3:")
-    local xp3VerText = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    xp3VerText:SetPoint("LEFT", xp3VerLabel, "RIGHT", 5, 0)
-    panel.xp3VerText = xp3VerText
     
     yLeft = yLeft - 14
     
@@ -688,10 +663,6 @@ function ChronicleLog:RefreshOptionsPanel()
     
     local addonVer, addonColor = self:CheckVersion("addon")
     panel.addonVerText:SetText("|cff" .. addonColor .. addonVer .. "|r")
-    local swVer, swColor = self:CheckVersion("superwow")
-    panel.swVerText:SetText("|cff" .. swColor .. swVer .. "|r")
-    local xp3Ver, xp3Color = self:CheckVersion("unitxp3")
-    panel.xp3VerText:SetText("|cff" .. xp3Color .. xp3Ver .. "|r")
     local npVer, npColor = self:CheckVersion("nampower")
     panel.npVerText:SetText("|cff" .. npColor .. npVer .. "|r")
     

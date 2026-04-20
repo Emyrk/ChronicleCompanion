@@ -238,15 +238,10 @@ function ChronicleLog:GenerateHeader()
     
     -- Addon versions
     local addonVersion = GetAddOnMetadata("ChronicleCompanion", "Version") or ""
-    local superWowVersion = SUPERWOW_VERSION or ""
+    local superWowVersion = ""
     local namPowerVersion = NAMPOWER_VERSION or ""
     
-    -- UnitXP3 version (returns build timestamp)
     local xp3Version = ""
-    local xp3ok, xp3buildTime = pcall(UnitXP, "version", "coffTimeDateStamp")
-    if xp3ok and xp3buildTime then
-        xp3Version = tostring(xp3buildTime)
-    end
     
     -- WoW client version
     local wowVersion, wowBuild, wowBuildDate = GetBuildInfo()
