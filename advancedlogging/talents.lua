@@ -37,12 +37,13 @@ end
 ---@param spellId number|string Spell ID of the debuff
 function ChronicleLog:HandleTalentReset(guid, spellId)
     if tonumber(spellId) ~= 57734 then return end
-    if not UnitIsPlayer(guid) or UnitIsPlayer(guid) ~= 1 then return end
+    local unit = ChronicleLog.ResolveGuidToToken(guid)
+    if not CUnitIsPlayer(unit) or CUnitIsPlayer(unit) ~= 1 then return end
 
-    local playerName = UnitName(guid)
+    local playerName = CUnitName(unit)
     Chronicle:DebugPrint("TalentResetDetected: " .. (playerName or guid))
 
-    if UnitIsUnit(guid, "player") == 1 then
+    if CUnitIsUnit(unit, "player") == 1 then
         -- Self talents are always in COMBATANT_INFO
         self:WriteCombatantInfo("player")
     else
@@ -131,11 +132,11 @@ end
 function ChronicleLog:QueueTalentInspection(unit, force)
     if not unit then return end
 
-    local name = UnitName(unit)
+    local name = CUnitName(unit)
     if not name then return end
 
     -- Skip self
-    if UnitIsUnit(unit, "player") == 1 then return end
+    if CUnitIsUnit(unit, "player") == 1 then return end
 
     -- Skip if recently updated (unless forced)
     if not force and talentLastUpdate[name] then
@@ -146,7 +147,7 @@ function ChronicleLog:QueueTalentInspection(unit, force)
 
     -- Skip if already queued (compare by name since unit could be GUID or token)
     for _, queued in ipairs(inspectionQueue) do
-        if UnitName(queued) == name then
+        if CUnitName(queued) == name then
             return
         end
     end
@@ -175,10 +176,10 @@ function ChronicleLog:ProcessTalentQueue()
     -- Pop next unit from queue
     while table.getn(inspectionQueue) > 0 do
         local unit = table.remove(inspectionQueue, 1)
-        local name = UnitName(unit)
+        local name = CUnitName(unit)
 
         -- Skip if unit is gone, offline, or is self
-        if name and UnitIsConnected(unit) and UnitIsUnit(unit, "player") ~= 1 then
+        if name and CUnitIsConnected(unit) and CUnitIsUnit(unit, "player") ~= 1 then
             -- Skip if another check happened while queued
             if not talentLastUpdate[name] or (now - talentLastUpdate[name]) >= TALENT_REFRESH_INTERVAL then
                 Chronicle:DebugPrint("RequestTalentInfo: " .. name)

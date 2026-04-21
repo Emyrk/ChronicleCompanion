@@ -14,6 +14,7 @@ file.lua
 minimap.lua
 
 advancedlogging\core.lua
+advancedlogging\unitapi.lua
 advancedlogging\units.lua
 advancedlogging\combatant.lua
 advancedlogging\talents.lua

@@ -81,6 +81,10 @@ ChronicleLog.events = {
     "CHAT_MSG_LOOT",               -- Loot messages (arg1 = message)
     "CHAT_MSG_SYSTEM",             -- System messages (arg1 = message) - used for trade detection
     "CHAT_MSG_ADDON",              -- Addon messages (for transmog data from other players)
+
+    -- Group roster events (for NAME_MAPPING emissions)
+    "RAID_ROSTER_UPDATE",
+    "PARTY_MEMBERS_CHANGED",
     
     -- Session events
     "PLAYER_LEAVING_WORLD",        -- Flush logs on logout/disconnect/reload
@@ -178,6 +182,12 @@ function ChronicleLog:Enable()
         self.frame:RegisterEvent(evt)
     end
     
+    -- Detect whether Unit* APIs accept GUIDs (TWoW yes, Kronos no)
+    self:DetectGuidSupport()
+
+    -- Build GUID → token/name caches from current roster
+    self:RefreshRosterCache()
+
     -- Update minimap icon
     if ChronicleMinimapButton then
         ChronicleMinimapButton:UpdateIcon()
@@ -484,6 +494,18 @@ function ChronicleLog:WriteZoneInfo(force)
     
     self:WriteHeader()
     self:Write("ZONE_INFO", zoneName, instanceId, inInstanceNum, instanceType, isGhost)
+    self:RefreshRosterCache()
+end
+
+
+--- Handles raid roster changes. Refreshes GUID → token/name caches.
+function ChronicleLog:RAID_ROSTER_UPDATE()
+    self:RefreshRosterCache()
+end
+
+--- Handles party member changes. Refreshes GUID → token/name caches.
+function ChronicleLog:PARTY_MEMBERS_CHANGED()
+    self:RefreshRosterCache()
 end
 
 --- Updates the saved instance ID for the current zone.
@@ -1273,8 +1295,9 @@ end
 ---@param raidIndex number Raid slot (1-40) or 0
 function ChronicleLog:UNIT_INVENTORY_CHANGED_GUID(guid, isPlayer, isTarget, isMouseover, isPet, partyIndex, raidIndex)
     -- Only emit for player units (NPCs don't have meaningful gear)
-    if UnitIsPlayer(guid) == 1 then
-        self:WriteCombatantInfo(guid)
+    local unit = ChronicleLog.ResolveGuidToToken(guid)
+    if CUnitIsPlayer(unit) == 1 then
+        self:WriteCombatantInfo(unit)
     end
 end
 

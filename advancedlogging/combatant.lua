@@ -56,35 +56,32 @@ end
 ---@param unit string Unit ID or GUID
 ---@return CombatantInfo|nil info Combatant info table or nil
 function ChronicleLog:GetCombatantInfo(unit)
-    local exists, guid = UnitExists(unit)
+    local exists, guid = CUnitExists(unit)
     if not exists then
         return nil
     end
     
-    if not UnitIsPlayer(unit) then
+    if not CUnitIsPlayer(unit) then
         return nil
     end
     
-    local name = UnitName(unit)
-    if not name then
-        return nil
-    end
+    local name = CUnitName(unit) or ""
     
     local info = {}
     info.guid = guid
     info.name = name
     
     -- Class, race, sex
-    local _, englishClass = UnitClass(unit)
+    local _, englishClass = CUnitClass(unit)
     info.class = englishClass or ""
     
-    local _, englishRace = UnitRace(unit)
+    local _, englishRace = CUnitRace(unit)
     info.race = englishRace or ""
     
-    info.sex = UnitSex(unit) or 1
+    info.sex = CUnitSex(unit) or 1
     
     -- Guild info
-    local guildName, guildRankName, guildRankIndex = GetGuildInfo(unit)
+    local guildName, guildRankName, guildRankIndex = CGetGuildInfo(unit)
     if guildName then
         info.guild_name = guildName
         info.guild_rank_name = guildRankName
@@ -94,13 +91,11 @@ function ChronicleLog:GetCombatantInfo(unit)
     -- Pet info
     local petUnit = GetPetUnit(unit)
     if petUnit then
-        local petExists, petGuid = UnitExists(petUnit)
+        local petExists, petGuid = CUnitExists(petUnit)
         if petExists then
-            local petName = UnitName(petUnit)
-            if petName then
-                info.pet_name = petName
-                info.pet_guid = petGuid
-            end
+            local petName = CUnitName(petUnit) or ""
+            info.pet_name = petName
+            info.pet_guid = petGuid
         end
     end
     
@@ -141,7 +136,7 @@ function ChronicleLog:GetCombatantInfo(unit)
     end
     
     -- Talents (only available for "player" unit)
-    if UnitIsUnit(guid, "player") == 1 then
+    if CUnitIsUnit(unit, "player") == 1 then
         local talents = { "", "", "" }
         for t = 1, 3 do
             local numTalents = GetNumTalents(t)

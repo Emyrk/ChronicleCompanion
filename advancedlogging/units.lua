@@ -252,22 +252,24 @@ function ChronicleLog:CheckUnit(guid)
         return
     end
     
+    -- Resolve GUID to a unit token (e.g. "raid3") when GUID-based APIs are unsupported.
+    -- If resolved, unit will be a token and all Unit* APIs work normally.
+    -- If not resolved (NPCs, out-of-group), unit stays as the GUID and C* wrappers handle it.
+    local unit = ChronicleLog.ResolveGuidToToken(guid)
+
     -- Validate unit exists
     local unitData = GetUnitData(guid)
     if not unitData then
         return
     end
     
-    local name = UnitName(guid)
-    if not name then
-        return
-    end
+    local name = CUnitName(unit) or ""
 
     -- Gather unit info
-    local isMe = UnitIsUnit(guid, "player") and 1 or 0
-    local canCooperate = UnitCanCooperate("player", guid) and 1 or 0
-    local level = UnitLevel(guid) or 0
-    local maxHealth = UnitHealthMax(guid) or 0
+    local isMe = CUnitIsUnit(unit, "player") and 1 or 0
+    local canCooperate = CUnitCanCooperate("player", unit) and 1 or 0
+    local level = CUnitLevel(unit) or 0
+    local maxHealth = CUnitHealthMax(unit) or 0
     local auras = GetUnitAuras(unitData)
     
     -- Check for owner (pets)
@@ -292,12 +294,52 @@ function ChronicleLog:CheckUnit(guid)
     self:Write("UNIT_INFO", guid, isMe, name, canCooperate, ownerGuid, auras, level, challenges, maxHealth, charm)
     
     -- Write COMBATANT_INFO for players (gear, talents, guild)
-    if UnitIsPlayer(guid) == 1 then
-        self:WriteCombatantInfo(guid)
+    if CUnitIsPlayer(unit) == 1 then
+        self:WriteCombatantInfo(unit)
         -- Request transmog info async (fires COMBATANT_TRANSMOG when response arrives)
-        self:RequestTransmogInfo(name)
+        if name ~= "" then
+            self:RequestTransmogInfo(name)
+        end
         -- Queue talent inspection (will be skipped if recently inspected)
-        self:QueueTalentInspection(guid)
+        self:QueueTalentInspection(unit)
+    end
+end
+
+--- Rebuilds the GUID → unit token and GUID → name caches from the current roster.
+--- Called on roster changes, zone changes, and logging enable.
+function ChronicleLog:RefreshRosterCache()
+    -- Clear stale entries and rebuild from current roster
+    self:ClearKnownPlayers()
+
+    local numRaid = GetNumRaidMembers()
+    if numRaid > 0 then
+        for i = 1, numRaid do
+            local unit = "raid" .. i
+            local name = UnitName(unit)
+            local guid = GetUnitGUID(unit)
+            if name and guid then
+                self:RegisterKnownPlayer(guid, name)
+                self:RegisterGuidToken(guid, unit)
+            end
+        end
+    else
+        local numParty = GetNumPartyMembers()
+        for i = 1, numParty do
+            local unit = "party" .. i
+            local name = UnitName(unit)
+            local guid = GetUnitGUID(unit)
+            if name and guid then
+                self:RegisterKnownPlayer(guid, name)
+                self:RegisterGuidToken(guid, unit)
+            end
+        end
+    end
+    -- Always include self
+    local myName = UnitName("player")
+    local myGuid = GetUnitGUID("player")
+    if myName and myGuid then
+        self:RegisterKnownPlayer(myGuid, myName)
+        self:RegisterGuidToken(myGuid, "player")
     end
 end
 

@@ -62,10 +62,12 @@ function Chronicle:Print(msg)
 	DEFAULT_CHAT_FRAME:AddMessage("|cffffff00[Chronicle]|r " .. tostring(msg))
 end
 
+local global = _G or getfenv(0)
+
 function Chronicle:DebugPrint(msg)
 	if ChronicleLog:GetSetting("debugMode") then
 		local frameNum = ChronicleLog:GetSetting("debugChatFrame") or 1
-		local chatFrame = _G["ChatFrame" .. frameNum] or DEFAULT_CHAT_FRAME
+		local chatFrame = global["ChatFrame" .. frameNum] or DEFAULT_CHAT_FRAME
 		chatFrame:AddMessage("|cff888888[Chronicle Debug]|r " .. tostring(msg))
 	end
 end
