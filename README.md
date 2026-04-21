@@ -10,6 +10,8 @@
 
 The official companion addon for **[ChronicleClassic.com](https://chronicleclassic.com)** — created and maintained by the Chronicle team. ChronicleCompanion enriches your combat logs with extended unit metadata so Chronicle can transform them into clear, actionable insights for raid leaders.
 
+⚙️ **Built for WoW 1.12 clients** (Vanilla)
+
 Upload your logs at **[chronicleclassic.com](https://chronicleclassic.com)**.
 
 ## Features
@@ -19,6 +21,7 @@ Upload your logs at **[chronicleclassic.com](https://chronicleclassic.com)**.
 
 ## Requirements
 
+- **World of Warcraft 1.12 client**
 - [Nampower](https://gitea.com/avitasia/nampower)
 
 ## Installation
@@ -46,7 +49,7 @@ Type `/chron save` to save the logs to disk.
 
 #### 4. Upload the file
 
-Upload `<TurtleWoWFolder>/Imports/Chronicle_<character_name>.txt` to **[ChronicleClassic.com](https://chronicleclassic.com)**.
+Upload `<VanillaWoWFolder>/Imports/Chronicle_<character_name>.txt` to **[ChronicleClassic.com](https://chronicleclassic.com)**.
 
 ### Slash Commands
 
