@@ -21,8 +21,6 @@ Upload your logs at **[chronicleclassic.com](https://chronicleclassic.com)**.
 
 - [Nampower](https://gitea.com/avitasia/nampower)
 
-You can still use [SuperWoWCombatLogger](https://github.com/pepopo978/SuperWowCombatLogger) for Turtlogs compatibility.
-
 ## Installation
 
 1. Download the latest release
