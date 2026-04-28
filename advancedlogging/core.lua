@@ -483,7 +483,8 @@ function ChronicleLog:WriteZoneInfo(force)
     end
     
     self:WriteHeader()
-    self:Write("ZONE_INFO", zoneName, instanceId, inInstanceNum, instanceType, isGhost)
+    -- The value after zoneName is the mapID, not the instance ID
+    self:Write("ZONE_INFO", zoneName, "", inInstanceNum, instanceType, isGhost)
 end
 
 --- Updates the saved instance ID for the current zone.
