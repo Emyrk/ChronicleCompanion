@@ -12,6 +12,12 @@ ChronicleLog = {
     bufferSize = 0,    -- Current number of lines in buffer
 }
 
+-- Detect Turtle WoW (build 7272) vs vanilla 1.12 (build 5875)
+-- Transmog and remote talent inspection are Turtle WoW-only features.
+local _, wowBuild = GetBuildInfo()
+ChronicleLog.isTurtleWow = (tonumber(wowBuild) == 7272)
+
+
 -- Delimiter for log output format: TIMESTAMP|EVENT_TYPE|field1|field2|...
 local LOG_SEP = "|"
 
@@ -116,12 +122,14 @@ function ChronicleLog:Init()
         lastTransmogCheck = now
         
         if ChronicleLog.enabled then
-            -- Flush pending transmog data after timeout
-            ChronicleLog:FlushPendingTransmog()
-            -- Process talent inspection queue
-            ChronicleLog:ProcessTalentQueue()
-            -- Periodically queue raid/party members for talent refresh
-            ChronicleLog:QueueRaidTalentRefresh()
+            if ChronicleLog.isTurtleWow then
+                -- Flush pending transmog data after timeout
+                ChronicleLog:FlushPendingTransmog()
+                -- Process talent inspection queue
+                ChronicleLog:ProcessTalentQueue()
+                -- Periodically queue raid/party members for talent refresh
+                ChronicleLog:QueueRaidTalentRefresh()
+            end
         end
     end)
     self.frame:SetScript("OnEvent", function()
@@ -227,7 +235,7 @@ end
 -- =============================================================================
 
 --- Generates a header string with player and version metadata.
---- Format: HEADER|playerGuid|realm|zone|addonVer|superWowVer|namPowerVer|xp3Ver|wowVer|wowBuild|wowBuildDate
+--- Format: HEADER|playerGuid|realm|zone|addonVer|superWowVer|namPowerVer|xp3Ver|wowVer|wowBuild|wowBuildDate|localTime|utcTime|combatLogRange|clientType
 ---@return string header Pipe-delimited header line
 function ChronicleLog:GenerateHeader()
     -- Player info

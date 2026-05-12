@@ -51,13 +51,80 @@ end
 ---@field gear table Array of 19 item strings (nil for empty slots)
 ---@field talents string|nil Talent string (only for "player" unit)
 
+--- Returns gear table for a unit (19 slots). Empty table if unavailable.
+--- Can be called independently for debugging: /run PrintTable(ChronicleLog:GetGearInfo("target"))
+---@param unit string Unit ID
+---@return table gear Array of up to 19 item strings
+function ChronicleLog:GetGearInfo(unit)
+    local gear = {}
+
+    for i = 1, 19 do
+        local link = GetInventoryItemLink(unit, i)
+        if link then
+            local baseData = ParseItemLink(link)
+            local item = GetEquippedItem(unit, i)
+
+            if item and baseData then
+                local _, _, itemName, suffixId, uniqueId = strfind(baseData, "^(.+);%d+:%d+:([^:]+):([^:]+)$")
+
+                if itemName then
+                    local itemId = item.itemId or 0
+                    local permEnchant = item.permanentEnchantId or 0
+                    local tempEnchant = item.tempEnchantId or 0
+                    suffixId = suffixId or "0"
+                    uniqueId = uniqueId or "0"
+
+                    gear[i] = itemName .. ";" .. itemId .. ":" .. permEnchant .. ":" .. suffixId .. ":" .. uniqueId .. ":" .. tempEnchant
+                elseif baseData then
+                    gear[i] = baseData .. ":0"
+                end
+            elseif baseData then
+                gear[i] = baseData .. ":0"
+            end
+        end
+    end
+
+    return gear
+end
+
+--- Returns talent string for a unit, or nil if unavailable.
+--- Can be called independently: /run print(ChronicleLog:GetTalentInfo("target"))
+---@param unit string Unit ID
+---@return string|nil talents Talent string or nil
+function ChronicleLog:GetTalentInfo(unit)
+    local _, guid = UnitExists(unit)
+    if not guid then return nil end
+
+    if UnitIsUnit(guid, "player") == 1 then
+        local talents = { "", "", "" }
+        for t = 1, 3 do
+            local numTalents = GetNumTalents(t)
+            for i = 1, numTalents do
+                local _, _, _, _, currRank = GetTalentInfo(t, i)
+                talents[t] = talents[t] .. (currRank or 0)
+            end
+        end
+        local talentStr = cstrjoin("}", talents[1], talents[2], talents[3])
+        if strlen(talentStr) > 10 then
+            return talentStr
+        end
+        return nil
+    else
+        local name = UnitName(unit)
+        if not name then return nil end
+        local talents = self:GetCachedTalents(name)
+        if talents == "" then return nil end
+        return talents
+    end
+end
+
 --- Gathers combatant info for a player unit.
 --- Returns nil if the unit is not a player or unavailable.
 ---@param unit string Unit ID or GUID
 ---@return CombatantInfo|nil info Combatant info table or nil
 function ChronicleLog:GetCombatantInfo(unit)
-    local exists, guid = UnitExists(unit)
-    if not exists then
+    local guid = GetUnitGUID(unit)
+    if not guid then
         return nil
     end
     
@@ -104,64 +171,9 @@ function ChronicleLog:GetCombatantInfo(unit)
         end
     end
     
-    -- Gear (19 slots)
-    info.gear = {}
-    local anyGear = false
-    
-    for i = 1, 19 do
-        local link = GetInventoryItemLink(unit, i)
-        if link then
-            anyGear = true
-            local baseData = ParseItemLink(link)  -- "Name;itemId:permEnchant:suffixId:uniqueId"
-            
-            -- Replace itemId/enchants with authoritative values from GetEquippedItem
-            local item = GetEquippedItem(unit, i)
-            if item and baseData then
-                -- Parse: "Name;itemId:permEnchant:suffixId:uniqueId"
-                local _, _, name, suffixId, uniqueId = strfind(baseData, "^(.+);%d+:%d+:([^:]+):([^:]+)$")
-                
-                -- Rebuild with correct values + temp enchant
-                local itemId = item.itemId or 0
-                local permEnchant = item.permanentEnchantId or 0
-                local tempEnchant = item.tempEnchantId or 0
-                suffixId = suffixId or "0"
-                uniqueId = uniqueId or "0"
-                
-                info.gear[i] = name .. ";" .. itemId .. ":" .. permEnchant .. ":" .. suffixId .. ":" .. uniqueId .. ":" .. tempEnchant
-            else
-                -- Fallback: use link data as-is, append 0 for temp enchant
-                info.gear[i] = baseData .. ":0"
-            end
-        end
-    end
-    
-    -- If no gear visible, leave gear table empty
-    if not anyGear then
-        info.gear = {}
-    end
-    
-    -- Talents (only available for "player" unit)
-    if UnitIsUnit(guid, "player") == 1 then
-        local talents = { "", "", "" }
-        for t = 1, 3 do
-            local numTalents = GetNumTalents(t)
-            for i = 1, numTalents do
-                local _, _, _, _, currRank = GetTalentInfo(t, i)
-                talents[t] = talents[t] .. (currRank or 0)
-            end
-        end
-        local talentStr = cstrjoin("}", talents[1], talents[2], talents[3])
-        -- Only include if meaningful (more than just separators)
-        if strlen(talentStr) > 10 then
-            info.talents = talentStr
-        end
-    else
-        -- Use cached talents from inspection protocol for other players
-        info.talents = self:GetCachedTalents(name)
-        if info.talents == "" then
-            info.talents = nil
-        end
-    end
+    -- Gear & Talents (extracted for independent debugging)
+    info.gear = self:GetGearInfo(unit)
+    info.talents = self:GetTalentInfo(unit)
     
     return info
 end

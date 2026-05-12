@@ -294,10 +294,12 @@ function ChronicleLog:CheckUnit(guid)
     -- Write COMBATANT_INFO for players (gear, talents, guild)
     if UnitIsPlayer(guid) == 1 then
         self:WriteCombatantInfo(guid)
-        -- Request transmog info async (fires COMBATANT_TRANSMOG when response arrives)
-        self:RequestTransmogInfo(name)
-        -- Queue talent inspection (will be skipped if recently inspected)
-        self:QueueTalentInspection(guid)
+        if self.isTurtleWow then
+            -- Request transmog info async (fires COMBATANT_TRANSMOG when response arrives)
+            self:RequestTransmogInfo(name)
+            -- Queue talent inspection (will be skipped if recently inspected)
+            self:QueueTalentInspection(guid)
+        end
     end
 end
 

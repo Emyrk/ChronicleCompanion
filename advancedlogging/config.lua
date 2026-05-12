@@ -4,7 +4,7 @@
 
 -- Minimum required versions for dependencies (empty string = no minimum)
 local MIN_VERSIONS = {
-    nampower = "3.4.0",       
+    nampower = "4.6.1",       
 }
 
 -- Default settings
