@@ -49,7 +49,7 @@ Type `/chron save` to save the logs to disk.
 
 #### 4. Upload the file
 
-Upload `<VanillaWoWFolder>/Imports/Chronicle_<character_name>.txt` to **[ChronicleClassic.com](https://chronicleclassic.com)**.
+Upload `<VanillaWoWFolder>/CustomData/Chronicle_<character_name>.txt` to **[ChronicleClassic.com](https://chronicleclassic.com)**.
 
 ### Slash Commands
 
