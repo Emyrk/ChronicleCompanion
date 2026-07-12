@@ -14,6 +14,7 @@ local DEFAULTS = {
     showLogReminder = true,
     autoCombatSave = true,
     showMinimapIcon = true,
+    includeRealmInFilename = false,
     rangeDefault = 40,
     rangeDungeon = 100,
     rangeRaid = 200,
@@ -549,10 +550,11 @@ end
 --- Archives current logs to a backup file with the given suffix, then clears logs.
 --- @param suffix string - suffix for the backup filename (e.g. "backup" or a user-entered label)
 function ChronicleLog:ArchiveLogs(suffix)
-    local playerName = UnitName("player") or "Unknown"
-    local currentFile = "Chronicle_" .. playerName .. ".txt"
+    local currentFile = self:GetLogFilename()
     local timestamp = time()
-    local newFile = "Chronicle_" .. playerName .. "_" .. suffix .. "_" .. timestamp .. ".txt"
+    -- Derive backup name from the current filename (respects includeRealmInFilename)
+    local base = string.gsub(currentFile, "%.txt$", "")
+    local newFile = base .. "_" .. suffix .. "_" .. timestamp .. ".txt"
 
     local existing = ChronicleFile:ReadFile(currentFile) or ""
     local bufferContent = ""
@@ -574,7 +576,7 @@ end
 
 --- Deletes all current logs (disk and memory).
 function ChronicleLog:DeleteLogs()
-    local filename = "Chronicle_" .. (UnitName("player") or "Unknown") .. ".txt"
+    local filename = self:GetLogFilename()
     ChronicleFile:WriteFile(filename, "")
     self:ClearBuffer()
     self:PurgeUnits()

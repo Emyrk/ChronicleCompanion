@@ -106,6 +106,22 @@ function Chronicle:HandleSlashCommand(msg)
 		else
 			ChronicleLog:ForceInspectPlayer(arg)
 		end
+	elseif cmd == "realm" then
+		local newVal
+		if arg == "1" or arg == "true" then
+			newVal = true
+		elseif arg == "0" or arg == "false" then
+			newVal = false
+		else
+			-- No arg or invalid arg: toggle
+			newVal = not ChronicleLog:GetSetting("includeRealmInFilename")
+		end
+		ChronicleLog:SetSetting("includeRealmInFilename", newVal)
+		if newVal then
+			self:Print("Log files now separated per realm. Current file: " .. ChronicleLog:GetLogFilename())
+		else
+			self:Print("Log files no longer separated per realm. Current file: " .. ChronicleLog:GetLogFilename())
+		end
 	elseif cmd == "minimap" then
 		local current = ChronicleLog:GetSetting("showMinimapIcon")
 		local newVal = not current
@@ -131,6 +147,7 @@ function Chronicle:ShowHelp()
 	self:Print("/chronicle ids - Show saved instance IDs")
 	self:Print("/chronicle inspect <name> - Force talent inspection of a player")
 	self:Print("/chronicle minimap - Toggle minimap icon visibility")
+	self:Print("/chronicle realm [1|0|true|false] - Toggle or set per-realm log file separation")
 	self:Print("/chronicle help - Show this help")
 	self:Print("/clog - Open chronicle log options")
 end

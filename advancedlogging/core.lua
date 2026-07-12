@@ -21,6 +21,20 @@ ChronicleLog.isTurtleWow = (tonumber(wowBuild) == 7272)
 -- Delimiter for log output format: TIMESTAMP|EVENT_TYPE|field1|field2|...
 local LOG_SEP = "|"
 
+--- Generate log filename for the current character.
+--- Format: Chronicle_<CharacterName>.txt, or Chronicle_<CharacterName>_<RealmName>.txt
+--- when the includeRealmInFilename setting is enabled (account-wide). Including the
+--- realm differentiates same-named characters on different realms.
+---@return string filename The log filename
+function ChronicleLog:GetLogFilename()
+    local playerName = UnitName("player") or "Unknown"
+    if self:GetSetting("includeRealmInFilename") then
+        local realm = GetRealmName() or "Unknown"
+        return "Chronicle_" .. playerName .. "_" .. realm .. ".txt"
+    end
+    return "Chronicle_" .. playerName .. ".txt"
+end
+
 --- Wrapper for IsInInstance() that excludes battlegrounds.
 --- Battlegrounds return instanceType "pvp" but we treat them as open world.
 ---@return boolean inInstance Whether player is in an instance (excluding BGs)
@@ -327,7 +341,7 @@ end
 
 --- Writes the in-memory buffer to a file and clears the buffer.
 --- Appends to existing file content using native append mode.
---- Filename: Chronicle_<CharacterName>.txt
+--- Filename: see ChronicleLog:GetLogFilename()
 ---@return number linesWritten Number of new lines written
 function ChronicleLog:FlushToFile()
     if self.bufferSize == 0 then
@@ -337,9 +351,8 @@ function ChronicleLog:FlushToFile()
     -- Generate header line to prepend (timestamp 0 since it covers the whole flush)
     local header = "0" .. LOG_SEP .. self:GenerateHeader()
     
-    -- Generate filename based on character name
-    local playerName = UnitName("player") or "Unknown"
-    local filename = "Chronicle_" .. playerName .. ".txt"
+    -- Generate filename based on character name and realm
+    local filename = self:GetLogFilename()
     
     -- Join buffer lines with newlines, prepend header
     local bufferContent = table.concat(self.buffer, "\n")
