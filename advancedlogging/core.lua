@@ -1224,6 +1224,11 @@ end
 ---   "You won: [Item]"                  / "PlayerName won: [Item]"
 ---   "You receive item: [Item]."        (pushed/auto-distributed loot)
 ---   "You create: [Item]."              (crafted items)
+--- Chinese (Simplified) equivalents:
+---   "PlayerName获得了物品：[Item]。"    (receive loot)
+---   "PlayerName赢得了[Item]"           (group loot rolls)
+---   "PlayerName得到了物品：[Item]。"    (pushed/distributed loot)
+---   "PlayerName制造了：[Item]。"        (crafted items)
 --- Writes a LOOT event with unit name and item link.
 ---@param msg string The loot message
 function ChronicleLog:CHAT_MSG_LOOT(msg)
@@ -1256,10 +1261,37 @@ function ChronicleLog:CHAT_MSG_LOOT(msg)
         _, _, looter, itemLink = strfind(msg, "^(.+) creates?: (.+)%.$")
     end
 
+    -- Pattern 5 (zhCN): "PlayerName获得了物品：[Item]。" (receive loot)
+    if not looter then
+        _, _, looter, itemLink = strfind(msg, "^(.+)获得了物品：(.+)。$")
+    end
+
+    -- Pattern 6 (zhCN): "PlayerName赢得了[Item]" (group loot rolls)
+    if not looter then
+        _, _, looter, itemLink = strfind(msg, "^(.+)赢得了(.+)")
+        if looter and itemLink then
+            -- Strip trailing no-spam annotation: " |cff818181(Need - 95)|r"
+            local _, _, cleanLink = strfind(itemLink, "^(.-) |cff818181")
+            if cleanLink then
+                itemLink = cleanLink
+            end
+        end
+    end
+
+    -- Pattern 7 (zhCN): "PlayerName得到了物品：[Item]。" (pushed/distributed loot)
+    if not looter then
+        _, _, looter, itemLink = strfind(msg, "^(.+)得到了物品：(.+)。$")
+    end
+
+    -- Pattern 8 (zhCN): "PlayerName制造了：[Item]。" (crafted items)
+    if not looter then
+        _, _, looter, itemLink = strfind(msg, "^(.+)制造了：(.+)。$")
+    end
+
     if not looter then return end
 
-    -- Convert "You" to player name
-    if looter == "You" then
+    -- Convert "You" / "你" to player name
+    if looter == "You" or looter == "你" then
         looter = UnitName("player") or "You"
     end
 
