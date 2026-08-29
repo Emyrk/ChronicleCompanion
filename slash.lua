@@ -81,12 +81,24 @@ function Chronicle:HandleSlashCommand(msg)
 		self:Print("MS Timestamp: " .. msTimestamp)
 		local ms = math.mod(msTimestamp, 1000)
 		self:Print("Verify: " .. date("%d.%m.%y %H:%M:%S", math.floor(msTimestamp / 1000)) .. string.format(".%03d", ms))
-	elseif cmd == "save" then
+	elseif cmd == "save" or cmd == "newfile" then
 		local lines = ChronicleLog:FlushToFile()
 		if lines > 0 then
 			self:Print("Saved " .. lines .. " lines to disk.")
 		else
 			self:Print("No lines to save.")
+		end
+		if cmd == "newfile" then
+			local filename = "Chronicle_" .. (UnitName("player") or "Unknown")
+			local ms = math.mod(math.floor((GetTime() + ChronicleLog.timeOffset)*1000), 1000)
+			local newfilename = filename .. "." .. date("%Y%m%d%H%M%S") .. string.format("%03d", ms)
+			ChronicleLog:CopyFile(filename, newfilename)
+			-- empty file
+			ExportFile(filename, "")
+			ChronicleLog:PurgeUnits()
+			ChronicleLog:WriteZoneInfo(true)
+			Chronicle:Print("previous log moved to " .. newfilename)
+			ChronicleLog:RefreshOptionsPanel()
 		end
 	elseif cmd == "delete" then
 		StaticPopup_Show("CHRONICLELOG_CLEAR_CONFIRM")
