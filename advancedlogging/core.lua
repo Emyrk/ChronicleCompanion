@@ -13,6 +13,7 @@ ChronicleLog = {
     raidGroupPayload = nil,
     raidGroupCapturePending = false,
     raidGroupCaptureAt = nil,
+    raidGroupForceCapture = false,
     raidGroupRetryCount = 0,
 }
 
@@ -401,12 +402,14 @@ function ChronicleLog:ResetRaidGroupCapture()
     self.raidGroupPayload = nil
     self.raidGroupCapturePending = false
     self.raidGroupCaptureAt = nil
+    self.raidGroupForceCapture = false
     self.raidGroupRetryCount = 0
 end
 
 --- Schedules a raid composition capture on this frame or after a short delay.
 ---@param delay number Delay in seconds
-function ChronicleLog:ScheduleRaidGroupCapture(delay)
+---@param force boolean Whether to emit a complete raid snapshot even if unchanged
+function ChronicleLog:ScheduleRaidGroupCapture(delay, force)
     if not self.enabled then return end
 
     local captureAt = GetTime() + (delay or 0)
@@ -414,6 +417,9 @@ function ChronicleLog:ScheduleRaidGroupCapture(delay)
         self.raidGroupCaptureAt = captureAt
     end
     self.raidGroupCapturePending = true
+    if force then
+        self.raidGroupForceCapture = true
+    end
 end
 
 --- Debounces a burst of roster events until no new event arrives during the delay.
@@ -431,9 +437,11 @@ function ChronicleLog:ProcessScheduledRaidGroupCapture(now)
     if not self.raidGroupCapturePending or not self.raidGroupCaptureAt then return end
     if now < self.raidGroupCaptureAt then return end
 
+    local force = self.raidGroupForceCapture
     self.raidGroupCapturePending = false
     self.raidGroupCaptureAt = nil
-    self:CaptureRaidGroup()
+    self.raidGroupForceCapture = false
+    self:CaptureRaidGroup(force)
 end
 
 --- Converts a WoW GUID to the compact hexadecimal representation used in RG records.
@@ -496,15 +504,16 @@ function ChronicleLog:BuildRaidGroupPayload()
     return table.concat(fields, ","), true
 end
 
---- Captures and emits the raid layout when its material composition changed.
-function ChronicleLog:CaptureRaidGroup()
+--- Captures and emits the raid layout when materially changed or explicitly forced.
+---@param force boolean Whether to emit a complete raid snapshot even if unchanged
+function ChronicleLog:CaptureRaidGroup(force)
     if not self.enabled then return end
 
     local payload, inRaid = self:BuildRaidGroupPayload()
     if not payload then
         if inRaid and self.raidGroupRetryCount < RAID_GROUP_MAX_RETRIES then
             self.raidGroupRetryCount = self.raidGroupRetryCount + 1
-            self:ScheduleRaidGroupCapture(RAID_GROUP_RETRY_DELAY)
+            self:ScheduleRaidGroupCapture(RAID_GROUP_RETRY_DELAY, force)
         end
         return
     end
@@ -518,7 +527,7 @@ function ChronicleLog:CaptureRaidGroup()
         return
     end
 
-    if payload ~= self.raidGroupPayload then
+    if payload ~= self.raidGroupPayload or (force and inRaid) then
         self:Write("RG", payload)
         self.raidGroupPayload = payload
     end
@@ -629,6 +638,10 @@ function ChronicleLog:ZONE_CHANGED_NEW_AREA()
     self:WriteZoneInfo(true)
     if self:IsEnabled() then
         self:PurgeUnits()
+        if isRaid then
+            -- Zone boundaries need a complete snapshot even when the roster is unchanged.
+            self:ScheduleRaidGroupCapture(0, true)
+        end
     end
 end
 
