@@ -761,6 +761,8 @@ end
 ---@param targetGuid string GUID of the unit that was dispelled
 ---@param spellId number Spell ID of the spell that was dispelled
 function ChronicleLog:SPELL_DISPEL_BY_SELF(casterGuid, targetGuid, spellId)
+    if not spellId or spellId == 0 then return end
+
     self:CheckUnit(casterGuid)
     self:CheckUnit(targetGuid)
     self:Write("DISPEL", casterGuid, targetGuid, spellId)
@@ -773,6 +775,8 @@ end
 ---@param targetGuid string GUID of the unit that was dispelled
 ---@param spellId number Spell ID of the spell that was dispelled
 function ChronicleLog:SPELL_DISPEL_BY_OTHER(casterGuid, targetGuid, spellId)
+    if not spellId or spellId == 0 then return end
+
     self:CheckUnit(casterGuid)
     self:CheckUnit(targetGuid)
     self:Write("DISPEL", casterGuid, targetGuid, spellId)
