@@ -13,6 +13,7 @@ ChronicleLog = {
     raidGroupPayload = nil,
     raidGroupCapturePending = false,
     raidGroupCaptureAt = nil,
+    raidGroupCaptureReason = nil,
     raidGroupForceCapture = false,
     raidGroupRetryCount = 0,
 }
@@ -26,9 +27,6 @@ ChronicleLog.isTurtleWow = (tonumber(wowBuild) == 7272)
 -- Delimiter for log output format: TIMESTAMP|EVENT_TYPE|field1|field2|...
 local LOG_SEP = "|"
 
-local RAID_GROUP_COUNT = 8
-local RAID_GROUP_SIZE = 5
-local RAID_GROUP_FIELD_COUNT = RAID_GROUP_COUNT * RAID_GROUP_SIZE
 local RAID_GROUP_DEBOUNCE_DELAY = 0.25
 local RAID_GROUP_RETRY_DELAY = 0.25
 local RAID_GROUP_MAX_RETRIES = 8
@@ -218,7 +216,7 @@ function ChronicleLog:Enable()
 
     -- Capture the current raid as a fresh logging-session baseline.
     self:ResetRaidGroupCapture()
-    self:ScheduleRaidGroupCapture(0)
+    self:ScheduleRaidGroupCapture(0, "LOGGING_ENABLED")
     
     -- Update minimap icon
     if ChronicleMinimapButton then
@@ -402,14 +400,16 @@ function ChronicleLog:ResetRaidGroupCapture()
     self.raidGroupPayload = nil
     self.raidGroupCapturePending = false
     self.raidGroupCaptureAt = nil
+    self.raidGroupCaptureReason = nil
     self.raidGroupForceCapture = false
     self.raidGroupRetryCount = 0
 end
 
 --- Schedules a raid composition capture on this frame or after a short delay.
 ---@param delay number Delay in seconds
+---@param reason string Event that requested the snapshot
 ---@param force boolean Whether to emit a complete raid snapshot even if unchanged
-function ChronicleLog:ScheduleRaidGroupCapture(delay, force)
+function ChronicleLog:ScheduleRaidGroupCapture(delay, reason, force)
     if not self.enabled then return end
 
     local captureAt = GetTime() + (delay or 0)
@@ -417,6 +417,7 @@ function ChronicleLog:ScheduleRaidGroupCapture(delay, force)
         self.raidGroupCaptureAt = captureAt
     end
     self.raidGroupCapturePending = true
+    self.raidGroupCaptureReason = reason or self.raidGroupCaptureReason or "UNKNOWN"
     if force then
         self.raidGroupForceCapture = true
     end
@@ -424,11 +425,13 @@ end
 
 --- Debounces a burst of roster events until no new event arrives during the delay.
 ---@param delay number Delay in seconds
-function ChronicleLog:DebounceRaidGroupCapture(delay)
+---@param reason string Event that requested the snapshot
+function ChronicleLog:DebounceRaidGroupCapture(delay, reason)
     if not self.enabled then return end
 
     self.raidGroupCapturePending = true
     self.raidGroupCaptureAt = GetTime() + (delay or 0)
+    self.raidGroupCaptureReason = reason or "UNKNOWN"
 end
 
 --- Runs a scheduled raid composition capture when its deadline is reached.
@@ -437,111 +440,81 @@ function ChronicleLog:ProcessScheduledRaidGroupCapture(now)
     if not self.raidGroupCapturePending or not self.raidGroupCaptureAt then return end
     if now < self.raidGroupCaptureAt then return end
 
+    local reason = self.raidGroupCaptureReason or "UNKNOWN"
     local force = self.raidGroupForceCapture
     self.raidGroupCapturePending = false
     self.raidGroupCaptureAt = nil
+    self.raidGroupCaptureReason = nil
     self.raidGroupForceCapture = false
-    self:CaptureRaidGroup(force)
+    self:CaptureRaidGroup(reason, force)
 end
 
---- Converts a WoW GUID to the compact hexadecimal representation used in RG records.
----@param guid string Unit GUID
----@return string compactGuid GUID without 0x prefix or leading zeroes
-function ChronicleLog:CompactRaidGroupGuid(guid)
-    local hex = guid and cmatch(guid, "^0[xX]([0-9A-Fa-f]+)$")
-    if not hex then return guid end
-
-    hex = string.gsub(hex, "^0+", "")
-    if hex == "" then hex = "0" end
-    return hex
-end
-
---- Builds a canonical 8-group by 5-slot raid layout.
---- Members are sorted by GUID within each subgroup so roster index reshuffles do not
---- produce a log line unless membership or subgroup assignment materially changed.
----@return string payload Forty comma-separated fields, or nil while the roster is incomplete
+--- Builds a raid composition in ascending roster-index order.
+---@return string payload Semicolon-separated guid,raidIndex,rank mappings, or nil while incomplete
+---@return number memberCount Current raid size
 ---@return boolean inRaid Whether the player currently has raid members
 function ChronicleLog:BuildRaidGroupPayload()
-    local fields = {}
-    local groups = {}
+    local members = {}
     local memberCount = GetNumRaidMembers() or 0
 
-    for fieldIndex = 1, RAID_GROUP_FIELD_COUNT do
-        fields[fieldIndex] = ""
-    end
-
     if memberCount <= 0 then
-        return table.concat(fields, ","), false
-    end
-
-    for groupIndex = 1, RAID_GROUP_COUNT do
-        groups[groupIndex] = {}
+        return "", 0, false
     end
 
     for raidIndex = 1, memberCount do
-        local name, _, subgroup = GetRaidRosterInfo(raidIndex)
+        local name, rank = GetRaidRosterInfo(raidIndex)
         local guid = GetUnitGUID("raid" .. raidIndex)
-        if not name or not subgroup or subgroup < 1 or subgroup > RAID_GROUP_COUNT or not guid then
-            return nil, true
+        if not name or rank == nil or not guid then
+            return nil, memberCount, true
         end
 
-        local group = groups[subgroup]
-        if table.getn(group) >= RAID_GROUP_SIZE then
-            return nil, true
-        end
-        table.insert(group, self:CompactRaidGroupGuid(guid))
+        members[raidIndex] = table.concat({ guid, raidIndex, rank }, ",")
     end
 
-    for groupIndex = 1, RAID_GROUP_COUNT do
-        local group = groups[groupIndex]
-        table.sort(group)
-        for slotIndex = 1, table.getn(group) do
-            local fieldIndex = ((groupIndex - 1) * RAID_GROUP_SIZE) + slotIndex
-            fields[fieldIndex] = group[slotIndex]
-        end
-    end
-
-    return table.concat(fields, ","), true
+    return table.concat(members, ";"), memberCount, true
 end
 
---- Captures and emits the raid layout when materially changed or explicitly forced.
+--- Captures and emits the raid composition when changed or explicitly forced.
+---@param reason string Event that requested the snapshot
 ---@param force boolean Whether to emit a complete raid snapshot even if unchanged
-function ChronicleLog:CaptureRaidGroup(force)
+function ChronicleLog:CaptureRaidGroup(reason, force)
     if not self.enabled then return end
 
-    local payload, inRaid = self:BuildRaidGroupPayload()
+    local payload, memberCount, inRaid = self:BuildRaidGroupPayload()
     if not payload then
         if inRaid and self.raidGroupRetryCount < RAID_GROUP_MAX_RETRIES then
             self.raidGroupRetryCount = self.raidGroupRetryCount + 1
-            self:ScheduleRaidGroupCapture(RAID_GROUP_RETRY_DELAY, force)
+            self:ScheduleRaidGroupCapture(RAID_GROUP_RETRY_DELAY, reason, force)
         end
         return
     end
 
     self.raidGroupRetryCount = 0
+    local snapshot = memberCount .. LOG_SEP .. payload
 
     -- Do not write an empty baseline when logging starts outside a raid. If a
-    -- previously logged raid disbands, the changed empty layout is emitted once.
+    -- previously logged raid disbands, the changed empty snapshot is emitted once.
     if not inRaid and self.raidGroupPayload == nil then
-        self.raidGroupPayload = payload
+        self.raidGroupPayload = snapshot
         return
     end
 
-    if payload ~= self.raidGroupPayload or (force and inRaid) then
-        self:Write("RG", payload)
-        self.raidGroupPayload = payload
+    if snapshot ~= self.raidGroupPayload or (force and inRaid) then
+        self:Write("RAID_COMPOSITION", reason, memberCount, payload)
+        self.raidGroupPayload = snapshot
     end
 end
 
 --- Debounces raid roster bursts so only the final stable composition is captured.
 function ChronicleLog:RAID_ROSTER_UPDATE()
     self.raidGroupRetryCount = 0
-    self:DebounceRaidGroupCapture(RAID_GROUP_DEBOUNCE_DELAY)
+    self:DebounceRaidGroupCapture(RAID_GROUP_DEBOUNCE_DELAY, "RAID_ROSTER_UPDATE")
 end
 
 --- Handles raid conversion and disband notifications through the same debounce path.
 function ChronicleLog:PARTY_MEMBERS_CHANGED()
-    self:RAID_ROSTER_UPDATE()
+    self.raidGroupRetryCount = 0
+    self:DebounceRaidGroupCapture(RAID_GROUP_DEBOUNCE_DELAY, "PARTY_MEMBERS_CHANGED")
 end
 
 -- =============================================================================
@@ -640,7 +613,7 @@ function ChronicleLog:ZONE_CHANGED_NEW_AREA()
         self:PurgeUnits()
         if isRaid then
             -- Zone boundaries need a complete snapshot even when the roster is unchanged.
-            self:ScheduleRaidGroupCapture(0, true)
+            self:ScheduleRaidGroupCapture(0, "ZONE_CHANGED_NEW_AREA", true)
         end
     end
 end
