@@ -450,7 +450,7 @@ function ChronicleLog:ProcessScheduledRaidGroupCapture(now)
 end
 
 --- Builds a raid composition in ascending roster-index order.
----@return string payload Semicolon-separated guid,raidIndex,rank mappings, or nil while incomplete
+---@return string payload Semicolon-separated guid,raidIndex,subgroup,rank mappings, or nil while incomplete
 ---@return number memberCount Current raid size
 ---@return boolean inRaid Whether the player currently has raid members
 function ChronicleLog:BuildRaidGroupPayload()
@@ -462,13 +462,13 @@ function ChronicleLog:BuildRaidGroupPayload()
     end
 
     for raidIndex = 1, memberCount do
-        local name, rank = GetRaidRosterInfo(raidIndex)
+        local name, rank, subgroup = GetRaidRosterInfo(raidIndex)
         local guid = GetUnitGUID("raid" .. raidIndex)
-        if not name or rank == nil or not guid then
+        if not name or rank == nil or not subgroup or subgroup < 1 or subgroup > 8 or not guid then
             return nil, memberCount, true
         end
 
-        members[raidIndex] = table.concat({ guid, raidIndex, rank }, ",")
+        members[raidIndex] = table.concat({ guid, raidIndex, subgroup, rank }, ",")
     end
 
     return table.concat(members, ";"), memberCount, true
