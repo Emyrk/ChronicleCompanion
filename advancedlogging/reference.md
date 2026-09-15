@@ -1,3 +1,30 @@
+# Chronicle advanced log records
+
+## `RAID_COMPOSITION`
+
+Raid composition snapshots use this pipe-delimited schema:
+
+```text
+timestamp|RAID_COMPOSITION|reason|memberCount|guid,raidIndex,rank;...
+```
+
+- `reason` is the event that requested the snapshot, such as `ZONE_CHANGED_NEW_AREA`, `RAID_ROSTER_UPDATE`, or `PARTY_MEMBERS_CHANGED`. A baseline captured when logging is manually enabled uses `LOGGING_ENABLED`.
+- `memberCount` is the number of raid members, from 0 through 40.
+- Each semicolon-delimited member entry contains the unit GUID, current raid roster index, and raid rank. Rank 0 is member, 1 is assistant, and 2 is leader.
+- Members are serialized in ascending raid-index order.
+
+Example:
+
+```text
+1723482930000|RAID_COMPOSITION|RAID_ROSTER_UPDATE|3|0x001,1,2;0x002,2,0;0x003,6,1
+```
+
+A raid disband emits an empty snapshot with a trailing payload field:
+
+```text
+1723482930000|RAID_COMPOSITION|PARTY_MEMBERS_CHANGED|0|
+```
+
 {{wowapievent|t=e|namespace=C_CombatLog|system=CombatLog}} {{tocright}}
 Fires for [[Combat Log]] events such as a player casting a spell or an NPC taking damage.
 
