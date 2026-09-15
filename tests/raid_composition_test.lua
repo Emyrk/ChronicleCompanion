@@ -60,7 +60,7 @@ setRoster({
 })
 
 local payload, memberCount, inRaid = ChronicleLog:BuildRaidGroupPayload()
-assertEqual(payload, "0x001,1,2;0x002,2,0;0x003,3,1", "raid payload")
+assertEqual(payload, "0x001,1,1,2;0x002,2,1,0;0x003,3,2,1", "raid payload")
 assertEqual(memberCount, 3, "raid member count")
 assertEqual(inRaid, true, "raid state")
 
@@ -81,16 +81,21 @@ setRoster({
 })
 ChronicleLog:CaptureRaidGroup("RAID_ROSTER_UPDATE", false)
 assertEqual(table.getn(writes), 2, "roster-index changes are logged")
-assertEqual(writes[2].payload, "0x002,1,0;0x001,2,2;0x003,3,1", "roster-index payload")
+assertEqual(writes[2].payload, "0x002,1,1,0;0x001,2,1,2;0x003,3,2,1", "roster-index payload")
 
 roster[1].rank = 1
 ChronicleLog:CaptureRaidGroup("RAID_ROSTER_UPDATE", false)
 assertEqual(table.getn(writes), 3, "rank changes are logged")
-assertEqual(writes[3].payload, "0x002,1,1;0x001,2,2;0x003,3,1", "rank-change payload")
+assertEqual(writes[3].payload, "0x002,1,1,1;0x001,2,1,2;0x003,3,2,1", "rank-change payload")
+
+roster[1].subgroup = 3
+ChronicleLog:CaptureRaidGroup("RAID_ROSTER_UPDATE", false)
+assertEqual(table.getn(writes), 4, "subgroup changes are logged")
+assertEqual(writes[4].payload, "0x002,1,3,1;0x001,2,1,2;0x003,3,2,1", "subgroup-change payload")
 
 ChronicleLog:CaptureRaidGroup("ZONE_CHANGED_NEW_AREA", true)
-assertEqual(table.getn(writes), 4, "forced zone snapshots are logged")
-assertEqual(writes[4].reason, "ZONE_CHANGED_NEW_AREA", "zone snapshot reason")
+assertEqual(table.getn(writes), 5, "forced zone snapshots are logged")
+assertEqual(writes[5].reason, "ZONE_CHANGED_NEW_AREA", "zone snapshot reason")
 
 local fullRaid = {}
 for raidIndex = 1, 40 do
@@ -103,17 +108,17 @@ for raidIndex = 1, 40 do
 end
 setRoster(fullRaid)
 ChronicleLog:CaptureRaidGroup("RAID_ROSTER_UPDATE", false)
-assertEqual(table.getn(writes), 5, "40-player snapshot is logged")
-assertEqual(writes[5].memberCount, 40, "40-player member count")
-local _, separatorCount = string.gsub(writes[5].payload, ";", "")
+assertEqual(table.getn(writes), 6, "40-player snapshot is logged")
+assertEqual(writes[6].memberCount, 40, "40-player member count")
+local _, separatorCount = string.gsub(writes[6].payload, ";", "")
 assertEqual(separatorCount, 39, "40-player mapping count")
-assertEqual(string.match(writes[5].payload, "^[^;]+"), "0x001,1,0", "first 40-player mapping")
-assertEqual(string.match(writes[5].payload, "([^;]+)$"), "0x040,40,0", "last 40-player mapping")
+assertEqual(string.match(writes[6].payload, "^[^;]+"), "0x001,1,1,0", "first 40-player mapping")
+assertEqual(string.match(writes[6].payload, "([^;]+)$"), "0x040,40,8,0", "last 40-player mapping")
 
 setRoster({})
 ChronicleLog:CaptureRaidGroup("PARTY_MEMBERS_CHANGED", false)
-assertEqual(table.getn(writes), 6, "raid disband is logged")
-assertEqual(writes[6].memberCount, 0, "disband member count")
-assertEqual(writes[6].payload, "", "disband payload")
+assertEqual(table.getn(writes), 7, "raid disband is logged")
+assertEqual(writes[7].memberCount, 0, "disband member count")
+assertEqual(writes[7].payload, "", "disband payload")
 
 print("raid composition tests passed")
