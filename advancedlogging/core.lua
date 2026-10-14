@@ -34,18 +34,127 @@ local RAID_GROUP_DEBOUNCE_DELAY = 0.25
 local RAID_GROUP_RETRY_DELAY = 0.25
 local RAID_GROUP_MAX_RETRIES = 8
 
---- Generate log filename for the current character.
---- Format: Chronicle_<CharacterName>.txt, or Chronicle_<CharacterName>_<RealmName>.txt
---- when the includeRealmInFilename setting is enabled (account-wide). Including the
---- realm differentiates same-named characters on different realms.
----@return string filename The log filename
-function ChronicleLog:GetLogFilename()
+-- A raid session keeps the same file (and date) as long as we come back to the
+-- same instance within this delay. A raid starting at 23:00 and ending at 01:00
+-- (or a /reload / disconnect in the middle) therefore stays in one file, dated
+-- from the day the raid started.
+local SESSION_TIMEOUT = 6 * 3600 -- seconds
+-- "Raid day" starts at 06:00: anything between midnight and 06:00 belongs to the
+-- previous evening (e.g. Onyxia entered at 00:30 after a Molten Core started at 21:00).
+local DAY_START_OFFSET = 6 * 3600 -- seconds
+
+--- Strips everything but letters and digits ("Zul'Gurub" -> "ZulGurub",
+--- "Onyxia's Lair" -> "OnyxiasLair") so the name is safe in a filename.
+local function SanitizeForFilename(text)
+    local clean = string.gsub(text or "", "[^%w]", "")
+    return clean
+end
+
+--- Returns the instance ID of the current zone from the saved instances list (0 if not saved).
+local function GetCurrentInstanceId(zoneName)
+    local zoneLower = strlower(zoneName or "")
+    for i = 1, GetNumSavedInstances() do
+        local instanceName, savedId = GetSavedInstanceInfo(i)
+        if instanceName and zoneLower == strlower(instanceName) then
+            return savedId or 0
+        end
+    end
+    return 0
+end
+
+--- Base of every filename: Chronicle_<CharacterName> or Chronicle_<CharacterName>_<RealmName>
+--- when the includeRealmInFilename setting is enabled (account-wide).
+function ChronicleLog:GetFilenameBase()
     local playerName = UnitName("player") or "Unknown"
     if self:GetSetting("includeRealmInFilename") then
-        local realm = GetRealmName() or "Unknown"
-        return "Chronicle_" .. playerName .. "_" .. realm .. ".txt"
+        local realm = SanitizeForFilename(GetRealmName() or "Unknown")
+        return "Chronicle_" .. playerName .. "_" .. realm
     end
-    return "Chronicle_" .. playerName .. ".txt"
+    return "Chronicle_" .. playerName
+end
+
+--- Computes the filename that matches the current location.
+--- In a raid or dungeon: Chronicle_<Name>_<Instance>_<YYYY-MM-DD>.txt, where the date
+--- is the day the session started (see SESSION_TIMEOUT).
+--- Elsewhere: Chronicle_<Name>.txt (previous behaviour).
+---@return string filename
+function ChronicleLog:ComputeLogFilename()
+    local base = self:GetFilenameBase()
+    local inInstance = self:IsInInstance()
+    local zoneName = GetRealZoneText() or ""
+    local zoneKey = SanitizeForFilename(zoneName)
+
+    if not inInstance or zoneKey == "" then
+        return base .. ".txt"
+    end
+
+    if not ChronicleCompanionCharDB then ChronicleCompanionCharDB = {} end
+    local session = ChronicleCompanionCharDB.logSession
+    local now = time()
+    local instanceId = GetCurrentInstanceId(zoneName)
+
+    local sameSession = session
+        and session.zone == zoneKey
+        and session.date
+        and session.last
+        and (now - session.last) < SESSION_TIMEOUT
+        -- A different raid lockout means a different raid, even within the delay
+        and not (instanceId ~= 0 and session.instanceId and session.instanceId ~= 0 and session.instanceId ~= instanceId)
+
+    if not sameSession then
+        session = { zone = zoneKey, date = date("%Y-%m-%d", now - DAY_START_OFFSET), instanceId = instanceId }
+        ChronicleCompanionCharDB.logSession = session
+    end
+    session.last = now
+    if instanceId ~= 0 then
+        session.instanceId = instanceId
+    end
+
+    return base .. "_" .. zoneKey .. "_" .. session.date .. ".txt"
+end
+
+--- Keeps the session alive (called at every combat end) so that a long raid
+--- is not split even if no zone change happens for hours.
+function ChronicleLog:TouchLogSession()
+    local session = ChronicleCompanionCharDB and ChronicleCompanionCharDB.logSession
+    if session and self.currentLogFile and string.find(self.currentLogFile, "_" .. session.zone .. "_", 1, true) then
+        session.last = time()
+    end
+end
+
+--- Returns the file currently being written to.
+--- The name is fixed when the zone changes (see ZONE_CHANGED_NEW_AREA), so lines
+--- buffered in a raid are still written to that raid's file after a loading screen.
+---@return string filename The log filename
+function ChronicleLog:GetLogFilename()
+    if not self.currentLogFile then
+        self.currentLogFile = self:ComputeLogFilename()
+    end
+    return self.currentLogFile
+end
+
+--- Recomputes the target file for the current zone. If it changed, the buffer
+--- is first flushed to the previous file.
+function ChronicleLog:UpdateLogFilename()
+    local newFile = self:ComputeLogFilename()
+    local now = GetTime()
+    if self.currentLogFile and newFile ~= self.currentLogFile then
+        -- Right after a loading screen the client may still report the previous
+        -- zone name for a fraction of a second (e.g. "Stranglethorn Vale" flagged
+        -- as a raid before "Zul'Gurub"). A file selected less than a few seconds
+        -- ago is treated as transitional: its lines go to the new file instead.
+        local transitional = self.currentLogFileSince and (now - self.currentLogFileSince) < 5
+        if not transitional then
+            self:FlushToFile()
+        end
+        if self:IsEnabled() then
+            Chronicle:Print("Log file: " .. newFile)
+        end
+    end
+    if newFile ~= self.currentLogFile then
+        self.currentLogFileSince = now
+    end
+    self.currentLogFile = newFile
 end
 
 --- Wrapper for IsInInstance() that excludes battlegrounds.
@@ -682,7 +791,11 @@ function ChronicleLog:ZONE_CHANGED_NEW_AREA()
     if self.optionsPanel and self.optionsPanel:IsShown() then
         self.optionsPanel:Hide()
     end
-    
+
+    -- Switch to the file of the new zone (per character / instance / day).
+    -- Lines buffered before the zone change are flushed to the previous file first.
+    self:UpdateLogFilename()
+
     -- Get zone name and find instance ID from saved instances
     local zoneName = GetRealZoneText() or ""
     local zoneLower = strlower(zoneName)
@@ -883,6 +996,8 @@ end
 function ChronicleLog:PLAYER_REGEN_ENABLED()
     self:Write0("COMBAT_END")
     self:UpdateInstanceId()
+    -- Keep the raid's log session alive (see SESSION_TIMEOUT)
+    self:TouchLogSession()
 end
 
 --- Handles AUTO_ATTACK_SELF events.
