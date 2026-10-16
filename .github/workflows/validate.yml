@@ -1,0 +1,30 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tools/write-arity/package-lock.json
+      - run: 'npm ci --prefix tools/write-arity'
+      - run: 'npm test --prefix tools/write-arity'
+      - run: 'npm run check --prefix tools/write-arity'
+      - name: Build Lua 5.0.3
+        run: 'tools/install_lua_5_0_3.sh "$RUNNER_TEMP/lua-5.0.3"'
+      - name: Run raid composition tests
+        run: '"$RUNNER_TEMP/lua-5.0.3/bin/lua" tests/raid_composition_test.lua'
+      - name: Run writer correctness tests
+        run: '"$RUNNER_TEMP/lua-5.0.3/bin/lua" tests/write_correctness_test.lua'

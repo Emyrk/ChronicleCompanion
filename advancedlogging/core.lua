@@ -364,6 +364,86 @@ function ChronicleLog:Write(eventType, ...)
     self.buffer[self.bufferSize] = line
 end
 
+-- -----------------------------------------------------------------------------
+-- Fixed-arity writers: ChronicleLog:WriteN(eventType, a1, ..., aN)
+--
+-- Same output as ChronicleLog:Write, byte for byte, but without the Lua 5.0
+-- vararg table ("arg") that every call to a function declared with "..."
+-- allocates, and without assembling the line in a table: the line is built
+-- with a single ".." chain. Write() is kept for callers outside the hot paths.
+-- N is the number of fields after the event type, counted exactly like
+-- arg.n in Write: a trailing nil argument still writes an empty field.
+-- -----------------------------------------------------------------------------
+
+--- Text of one field, as Write() would produce it (nil -> "").
+--- Strings and numbers are returned as they are: ".." formats numbers exactly
+--- like tostring() does.
+local function F(v)
+    if v == nil then return "" end
+    local t = type(v)
+    if t == "string" or t == "number" then return v end
+    return tostring(v)
+end
+
+local floor = math.floor
+
+local function Push(self, line)
+    self.bufferSize = self.bufferSize + 1
+    self.buffer[self.bufferSize] = line
+end
+
+function ChronicleLog:Write0(eventType)
+    Push(self, floor((GetTime() + self.timeOffset) * 1000) .. LOG_SEP .. eventType)
+end
+
+function ChronicleLog:Write1(eventType, a1)
+    Push(self, floor((GetTime() + self.timeOffset) * 1000) .. LOG_SEP .. eventType .. LOG_SEP .. F(a1))
+end
+
+function ChronicleLog:Write2(eventType, a1, a2)
+    Push(self, floor((GetTime() + self.timeOffset) * 1000) .. LOG_SEP .. eventType .. LOG_SEP .. F(a1) .. LOG_SEP .. F(a2))
+end
+
+function ChronicleLog:Write3(eventType, a1, a2, a3)
+    Push(self, floor((GetTime() + self.timeOffset) * 1000) .. LOG_SEP .. eventType .. LOG_SEP .. F(a1) .. LOG_SEP .. F(a2) .. LOG_SEP .. F(a3))
+end
+
+function ChronicleLog:Write4(eventType, a1, a2, a3, a4)
+    Push(self, floor((GetTime() + self.timeOffset) * 1000) .. LOG_SEP .. eventType .. LOG_SEP .. F(a1) .. LOG_SEP .. F(a2) .. LOG_SEP .. F(a3) .. LOG_SEP .. F(a4))
+end
+
+function ChronicleLog:Write5(eventType, a1, a2, a3, a4, a5)
+    Push(self, floor((GetTime() + self.timeOffset) * 1000) .. LOG_SEP .. eventType .. LOG_SEP .. F(a1) .. LOG_SEP .. F(a2) .. LOG_SEP .. F(a3) .. LOG_SEP .. F(a4) .. LOG_SEP .. F(a5))
+end
+
+function ChronicleLog:Write6(eventType, a1, a2, a3, a4, a5, a6)
+    Push(self, floor((GetTime() + self.timeOffset) * 1000) .. LOG_SEP .. eventType .. LOG_SEP .. F(a1) .. LOG_SEP .. F(a2) .. LOG_SEP .. F(a3) .. LOG_SEP .. F(a4) .. LOG_SEP .. F(a5) .. LOG_SEP .. F(a6))
+end
+
+function ChronicleLog:Write7(eventType, a1, a2, a3, a4, a5, a6, a7)
+    Push(self, floor((GetTime() + self.timeOffset) * 1000) .. LOG_SEP .. eventType .. LOG_SEP .. F(a1) .. LOG_SEP .. F(a2) .. LOG_SEP .. F(a3) .. LOG_SEP .. F(a4) .. LOG_SEP .. F(a5) .. LOG_SEP .. F(a6) .. LOG_SEP .. F(a7))
+end
+
+function ChronicleLog:Write8(eventType, a1, a2, a3, a4, a5, a6, a7, a8)
+    Push(self, floor((GetTime() + self.timeOffset) * 1000) .. LOG_SEP .. eventType .. LOG_SEP .. F(a1) .. LOG_SEP .. F(a2) .. LOG_SEP .. F(a3) .. LOG_SEP .. F(a4) .. LOG_SEP .. F(a5) .. LOG_SEP .. F(a6) .. LOG_SEP .. F(a7) .. LOG_SEP .. F(a8))
+end
+
+function ChronicleLog:Write9(eventType, a1, a2, a3, a4, a5, a6, a7, a8, a9)
+    Push(self, floor((GetTime() + self.timeOffset) * 1000) .. LOG_SEP .. eventType .. LOG_SEP .. F(a1) .. LOG_SEP .. F(a2) .. LOG_SEP .. F(a3) .. LOG_SEP .. F(a4) .. LOG_SEP .. F(a5) .. LOG_SEP .. F(a6) .. LOG_SEP .. F(a7) .. LOG_SEP .. F(a8) .. LOG_SEP .. F(a9))
+end
+
+function ChronicleLog:Write10(eventType, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10)
+    Push(self, floor((GetTime() + self.timeOffset) * 1000) .. LOG_SEP .. eventType .. LOG_SEP .. F(a1) .. LOG_SEP .. F(a2) .. LOG_SEP .. F(a3) .. LOG_SEP .. F(a4) .. LOG_SEP .. F(a5) .. LOG_SEP .. F(a6) .. LOG_SEP .. F(a7) .. LOG_SEP .. F(a8) .. LOG_SEP .. F(a9) .. LOG_SEP .. F(a10))
+end
+
+function ChronicleLog:Write11(eventType, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11)
+    Push(self, floor((GetTime() + self.timeOffset) * 1000) .. LOG_SEP .. eventType .. LOG_SEP .. F(a1) .. LOG_SEP .. F(a2) .. LOG_SEP .. F(a3) .. LOG_SEP .. F(a4) .. LOG_SEP .. F(a5) .. LOG_SEP .. F(a6) .. LOG_SEP .. F(a7) .. LOG_SEP .. F(a8) .. LOG_SEP .. F(a9) .. LOG_SEP .. F(a10) .. LOG_SEP .. F(a11))
+end
+
+function ChronicleLog:Write12(eventType, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12)
+    Push(self, floor((GetTime() + self.timeOffset) * 1000) .. LOG_SEP .. eventType .. LOG_SEP .. F(a1) .. LOG_SEP .. F(a2) .. LOG_SEP .. F(a3) .. LOG_SEP .. F(a4) .. LOG_SEP .. F(a5) .. LOG_SEP .. F(a6) .. LOG_SEP .. F(a7) .. LOG_SEP .. F(a8) .. LOG_SEP .. F(a9) .. LOG_SEP .. F(a10) .. LOG_SEP .. F(a11) .. LOG_SEP .. F(a12))
+end
+
 --- Clears the in-memory buffer.
 function ChronicleLog:ClearBuffer()
     self.buffer = {}
@@ -562,7 +642,7 @@ function ChronicleLog:CaptureRaidGroup(reason, force)
     end
 
     if snapshot ~= self.raidGroupPayload or (force and inRaid) then
-        self:Write("RAID_COMPOSITION", reason, memberCount, payload)
+        self:Write3("RAID_COMPOSITION", reason, memberCount, payload)
         self.raidGroupPayload = snapshot
     end
 end
@@ -717,7 +797,7 @@ function ChronicleLog:WriteZoneInfo(force)
     
     self:WriteHeader()
     -- The value after zoneName is the mapID, not the instance ID
-    self:Write("ZONE_INFO", zoneName, "", inInstanceNum, instanceType, isGhost)
+    self:Write5("ZONE_INFO", zoneName, "", inInstanceNum, instanceType, isGhost)
 end
 
 --- Updates the saved instance ID for the current zone.
@@ -749,7 +829,7 @@ end
 ---@param spellId number Spell ID
 ---@param duration number Cast duration in milliseconds
 function ChronicleLog:UNIT_CASTEVENT(casterGUID, targetGUID, eventType, spellId, duration)
-    self:Write("CAST", casterGUID, targetGUID, eventType, spellId, duration)
+    self:Write5("CAST", casterGUID, targetGUID, eventType, spellId, duration)
 end
 
 --- Handles UNIT_DIED events.
@@ -758,7 +838,7 @@ end
 ---@param guid string GUID of the unit that died
 function ChronicleLog:UNIT_DIED(guid)
     self:CheckUnit(guid)
-    self:Write("DEATH", guid)
+    self:Write1("DEATH", guid)
 end
 
 --- Handles RAID_TARGET_UPDATE events.
@@ -774,14 +854,14 @@ end
 --- Called when the player enters combat (loses regen).
 --- Writes a COMBAT_START event with no additional fields.
 function ChronicleLog:PLAYER_REGEN_DISABLED()
-    self:Write("COMBAT_START")
+    self:Write0("COMBAT_START")
 end
 
 --- Handles PLAYER_REGEN_ENABLED events.
 --- Called when the player leaves combat (regains regen).
 --- Writes a COMBAT_END event with no additional fields.
 function ChronicleLog:PLAYER_REGEN_ENABLED()
-    self:Write("COMBAT_END")
+    self:Write0("COMBAT_END")
     self:UpdateInstanceId()
 end
 
@@ -801,7 +881,7 @@ end
 function ChronicleLog:AUTO_ATTACK_SELF(attackerGuid, targetGuid, totalDamage, hitInfo, victimState, subDamageCount, blockedAmount, totalAbsorb, totalResist)
     self:CheckUnit(attackerGuid)
     self:CheckUnit(targetGuid)
-    self:Write("SWING", attackerGuid, targetGuid, totalDamage, hitInfo, victimState, subDamageCount, blockedAmount, totalAbsorb, totalResist)
+    self:Write9("SWING", attackerGuid, targetGuid, totalDamage, hitInfo, victimState, subDamageCount, blockedAmount, totalAbsorb, totalResist)
 end
 
 --- Handles AUTO_ATTACK_OTHER events.
@@ -821,7 +901,7 @@ end
 function ChronicleLog:AUTO_ATTACK_OTHER(attackerGuid, targetGuid, totalDamage, hitInfo, victimState, subDamageCount, blockedAmount, totalAbsorb, totalResist)
     self:CheckUnit(attackerGuid)
     self:CheckUnit(targetGuid)
-    self:Write("SWING", attackerGuid, targetGuid, totalDamage, hitInfo, victimState, subDamageCount, blockedAmount, totalAbsorb, totalResist)
+    self:Write9("SWING", attackerGuid, targetGuid, totalDamage, hitInfo, victimState, subDamageCount, blockedAmount, totalAbsorb, totalResist)
 end
 
 --- Handles SPELL_HEAL_BY_SELF events.
@@ -839,7 +919,7 @@ end
 function ChronicleLog:SPELL_HEAL_BY_SELF(targetGuid, casterGuid, spellId, amount, critical, periodic)
     self:CheckUnit(targetGuid)
     self:CheckUnit(casterGuid)
-    self:Write("HEAL", targetGuid, casterGuid, spellId, amount, critical, periodic)
+    self:Write6("HEAL", targetGuid, casterGuid, spellId, amount, critical, periodic)
 end
 
 --- Handles SPELL_HEAL_BY_OTHER events.
@@ -856,7 +936,7 @@ end
 function ChronicleLog:SPELL_HEAL_BY_OTHER(targetGuid, casterGuid, spellId, amount, critical, periodic)
     self:CheckUnit(targetGuid)
     self:CheckUnit(casterGuid)
-    self:Write("HEAL", targetGuid, casterGuid, spellId, amount, critical, periodic)
+    self:Write6("HEAL", targetGuid, casterGuid, spellId, amount, critical, periodic)
 end
 
 --- Handles SPELL_HEAL_ON_SELF events.
@@ -894,7 +974,7 @@ end
 function ChronicleLog:SPELL_ENERGIZE_BY_SELF(targetGuid, casterGuid, spellId, powerType, amount, periodic)
     self:CheckUnit(targetGuid)
     self:CheckUnit(casterGuid)
-    self:Write("ENERGIZE", targetGuid, casterGuid, spellId, powerType, amount, periodic)
+    self:Write6("ENERGIZE", targetGuid, casterGuid, spellId, powerType, amount, periodic)
 end
 
 --- Handles SPELL_ENERGIZE_BY_OTHER events.
@@ -912,7 +992,7 @@ end
 function ChronicleLog:SPELL_ENERGIZE_BY_OTHER(targetGuid, casterGuid, spellId, powerType, amount, periodic)
     self:CheckUnit(targetGuid)
     self:CheckUnit(casterGuid)
-    self:Write("ENERGIZE", targetGuid, casterGuid, spellId, powerType, amount, periodic)
+    self:Write6("ENERGIZE", targetGuid, casterGuid, spellId, powerType, amount, periodic)
 end
 
 --- Handles SPELL_ENERGIZE_ON_SELF events.
@@ -947,7 +1027,7 @@ end
 function ChronicleLog:SPELL_MISS_SELF(casterGuid, targetGuid, spellId, missInfo)
     self:CheckUnit(casterGuid)
     self:CheckUnit(targetGuid)
-    self:Write("MISS", casterGuid, targetGuid, spellId, missInfo)
+    self:Write4("MISS", casterGuid, targetGuid, spellId, missInfo)
 end
 
 --- Handles SPELL_MISS_OTHER events.
@@ -963,7 +1043,7 @@ end
 function ChronicleLog:SPELL_MISS_OTHER(casterGuid, targetGuid, spellId, missInfo)
     self:CheckUnit(casterGuid)
     self:CheckUnit(targetGuid)
-    self:Write("MISS", casterGuid, targetGuid, spellId, missInfo)
+    self:Write4("MISS", casterGuid, targetGuid, spellId, missInfo)
 end
 
 --- Handles SPELL_DISPEL_BY_SELF events.
@@ -977,7 +1057,7 @@ function ChronicleLog:SPELL_DISPEL_BY_SELF(casterGuid, targetGuid, spellId)
 
     self:CheckUnit(casterGuid)
     self:CheckUnit(targetGuid)
-    self:Write("DISPEL", casterGuid, targetGuid, spellId)
+    self:Write3("DISPEL", casterGuid, targetGuid, spellId)
 end
 
 --- Handles SPELL_DISPEL_BY_OTHER events.
@@ -991,7 +1071,7 @@ function ChronicleLog:SPELL_DISPEL_BY_OTHER(casterGuid, targetGuid, spellId)
 
     self:CheckUnit(casterGuid)
     self:CheckUnit(targetGuid)
-    self:Write("DISPEL", casterGuid, targetGuid, spellId)
+    self:Write3("DISPEL", casterGuid, targetGuid, spellId)
 end
 
 --- Handles ENVIRONMENTAL_DMG_SELF events.
@@ -1005,7 +1085,7 @@ end
 ---@param resist number Amount of damage resisted
 function ChronicleLog:ENVIRONMENTAL_DMG_SELF(unitGuid, dmgType, damage, absorb, resist)
     self:CheckUnit(unitGuid)
-    self:Write("ENV_DMG", unitGuid, dmgType, damage, absorb, resist)
+    self:Write5("ENV_DMG", unitGuid, dmgType, damage, absorb, resist)
 end
 
 --- Handles ENVIRONMENTAL_DMG_OTHER events.
@@ -1019,7 +1099,7 @@ end
 ---@param resist number Amount of damage resisted
 function ChronicleLog:ENVIRONMENTAL_DMG_OTHER(unitGuid, dmgType, damage, absorb, resist)
     self:CheckUnit(unitGuid)
-    self:Write("ENV_DMG", unitGuid, dmgType, damage, absorb, resist)
+    self:Write5("ENV_DMG", unitGuid, dmgType, damage, absorb, resist)
 end
 
 --- Handles DAMAGE_SHIELD_SELF events.
@@ -1033,7 +1113,7 @@ end
 function ChronicleLog:DAMAGE_SHIELD_SELF(unitGuid, targetGuid, damage, spellSchool)
     self:CheckUnit(unitGuid)
     self:CheckUnit(targetGuid)
-    self:Write("DMG_SHIELD", unitGuid, targetGuid, damage, spellSchool)
+    self:Write4("DMG_SHIELD", unitGuid, targetGuid, damage, spellSchool)
 end
 
 --- Handles DAMAGE_SHIELD_OTHER events.
@@ -1047,7 +1127,7 @@ end
 function ChronicleLog:DAMAGE_SHIELD_OTHER(unitGuid, targetGuid, damage, spellSchool)
     self:CheckUnit(unitGuid)
     self:CheckUnit(targetGuid)
-    self:Write("DMG_SHIELD", unitGuid, targetGuid, damage, spellSchool)
+    self:Write4("DMG_SHIELD", unitGuid, targetGuid, damage, spellSchool)
 end
 
 --- Handles AURA_CAST_ON_SELF events.
@@ -1068,7 +1148,7 @@ end
 function ChronicleLog:AURA_CAST_ON_SELF(spellId, casterGuid, targetGuid, effect, effectAuraName, effectAmplitude, effectMiscValue, durationMs, auraCapStatus)
     self:CheckUnit(casterGuid)
     self:CheckUnit(targetGuid)
-    self:Write("AURA_CAST", spellId, casterGuid, targetGuid, effect, effectAuraName, effectAmplitude, effectMiscValue, durationMs, auraCapStatus)
+    self:Write9("AURA_CAST", spellId, casterGuid, targetGuid, effect, effectAuraName, effectAmplitude, effectMiscValue, durationMs, auraCapStatus)
 end
 
 --- Handles AURA_CAST_ON_OTHER events.
@@ -1088,7 +1168,7 @@ end
 function ChronicleLog:AURA_CAST_ON_OTHER(spellId, casterGuid, targetGuid, effect, effectAuraName, effectAmplitude, effectMiscValue, durationMs, auraCapStatus)
     self:CheckUnit(casterGuid)
     self:CheckUnit(targetGuid)
-    self:Write("AURA_CAST", spellId, casterGuid, targetGuid, effect, effectAuraName, effectAmplitude, effectMiscValue, durationMs, auraCapStatus)
+    self:Write9("AURA_CAST", spellId, casterGuid, targetGuid, effect, effectAuraName, effectAmplitude, effectMiscValue, durationMs, auraCapStatus)
 end
 
 --- Handles BUFF_UPDATE_DURATION_SELF events.
@@ -1131,7 +1211,7 @@ end
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:BUFF_ADDED_SELF(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
     self:CheckUnit(guid)
-    self:Write("BUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:Write7("BUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
 --- Handles BUFF_REMOVED_SELF events.
@@ -1146,7 +1226,7 @@ end
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:BUFF_REMOVED_SELF(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
     self:CheckUnit(guid)
-    self:Write("BUFF_REM", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:Write7("BUFF_REM", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
 --- Handles BUFF_ADDED_OTHER events.
@@ -1161,7 +1241,7 @@ end
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:BUFF_ADDED_OTHER(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
     self:CheckUnit(guid)
-    self:Write("BUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:Write7("BUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
 --- Handles BUFF_REMOVED_OTHER events.
@@ -1176,7 +1256,7 @@ end
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:BUFF_REMOVED_OTHER(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
     self:CheckUnit(guid)
-    self:Write("BUFF_REM", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:Write7("BUFF_REM", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
 --- Handles DEBUFF_ADDED_SELF events.
@@ -1191,7 +1271,7 @@ end
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:DEBUFF_ADDED_SELF(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
     self:CheckUnit(guid)
-    self:Write("DEBUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:Write7("DEBUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
     
     self:HandleTalentReset(guid, spellId)
 end
@@ -1208,7 +1288,7 @@ end
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:DEBUFF_REMOVED_SELF(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
     self:CheckUnit(guid)
-    self:Write("DEBUFF_REM", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:Write7("DEBUFF_REM", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
 --- Handles DEBUFF_ADDED_OTHER events.
@@ -1223,7 +1303,7 @@ end
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:DEBUFF_ADDED_OTHER(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
     self:CheckUnit(guid)
-    self:Write("DEBUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:Write7("DEBUFF_ADD", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
     
     self:HandleTalentReset(guid, spellId)
 end
@@ -1240,7 +1320,7 @@ end
 ---@param state number 0=added, 1=removed, 2=modified (stack change)
 function ChronicleLog:DEBUFF_REMOVED_OTHER(guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
     self:CheckUnit(guid)
-    self:Write("DEBUFF_REM", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
+    self:Write7("DEBUFF_REM", guid, luaSlot, spellId, stackCount, auraLevel, auraSlot, state)
 end
 
 --- Handles SPELL_DAMAGE_EVENT_SELF events.
@@ -1261,7 +1341,7 @@ end
 function ChronicleLog:SPELL_DAMAGE_EVENT_SELF(targetGuid, casterGuid, spellId, amount, mitigationStr, hitInfo, spellSchool, effectAuraStr)
     self:CheckUnit(targetGuid)
     self:CheckUnit(casterGuid)
-    self:Write("SPELL_DMG", targetGuid, casterGuid, spellId, amount, mitigationStr, hitInfo, spellSchool, effectAuraStr)
+    self:Write8("SPELL_DMG", targetGuid, casterGuid, spellId, amount, mitigationStr, hitInfo, spellSchool, effectAuraStr)
 end
 
 --- Handles SPELL_DAMAGE_EVENT_OTHER events.
@@ -1282,7 +1362,7 @@ end
 function ChronicleLog:SPELL_DAMAGE_EVENT_OTHER(targetGuid, casterGuid, spellId, amount, mitigationStr, hitInfo, spellSchool, effectAuraStr)
     self:CheckUnit(targetGuid)
     self:CheckUnit(casterGuid)
-    self:Write("SPELL_DMG", targetGuid, casterGuid, spellId, amount, mitigationStr, hitInfo, spellSchool, effectAuraStr)
+    self:Write8("SPELL_DMG", targetGuid, casterGuid, spellId, amount, mitigationStr, hitInfo, spellSchool, effectAuraStr)
 end
 
 --- Handles SPELL_DELAYED_SELF events.
@@ -1292,7 +1372,7 @@ end
 ---@param delayMs number Delay in milliseconds
 function ChronicleLog:SPELL_DELAYED_SELF(casterGuid, delayMs)
     self:CheckUnit(casterGuid)
-    self:Write("SPELL_DELAY", casterGuid, delayMs)
+    self:Write2("SPELL_DELAY", casterGuid, delayMs)
 end
 
 --- Handles SPELL_DELAYED_OTHER events.
@@ -1303,7 +1383,7 @@ end
 ---@param delayMs number Delay in milliseconds
 function ChronicleLog:SPELL_DELAYED_OTHER(casterGuid, delayMs)
     self:CheckUnit(casterGuid)
-    self:Write("SPELL_DELAY", casterGuid, delayMs)
+    self:Write2("SPELL_DELAY", casterGuid, delayMs)
 end
 
 --- Handles SPELL_CHANNEL_START events.
@@ -1315,7 +1395,7 @@ end
 ---@param durationMs number Channel duration in milliseconds
 function ChronicleLog:SPELL_CHANNEL_START(spellId, targetGuid, durationMs)
     self:CheckUnit(targetGuid)
-    self:Write("CHANNEL_START", spellId, targetGuid, durationMs)
+    self:Write3("CHANNEL_START", spellId, targetGuid, durationMs)
 end
 
 --- Handles SPELL_CHANNEL_UPDATE events.
@@ -1327,7 +1407,7 @@ end
 ---@param remainingMs number Remaining channel time in milliseconds
 function ChronicleLog:SPELL_CHANNEL_UPDATE(spellId, targetGuid, remainingMs)
     self:CheckUnit(targetGuid)
-    self:Write("CHANNEL_UPDATE", spellId, targetGuid, remainingMs)
+    self:Write3("CHANNEL_UPDATE", spellId, targetGuid, remainingMs)
 end
 
 --- Handles SPELL_FAILED_SELF events.
@@ -1340,7 +1420,7 @@ end
 function ChronicleLog:SPELL_FAILED_SELF(spellId, spellResult, failedByServer)
     local _, playerGuid = UnitExists("player")
     -- Reordering parameters to keep the same as `SPELL_FAILED_OTHER`
-    self:Write("SPELL_FAIL", playerGuid, spellId, failedByServer == 1, spellResult)
+    self:Write4("SPELL_FAIL", playerGuid, spellId, failedByServer == 1, spellResult)
 end
 
 --- Handles SPELL_FAILED_OTHER events.
@@ -1351,7 +1431,7 @@ end
 ---@param spellId number Spell ID that failed
 function ChronicleLog:SPELL_FAILED_OTHER(casterGuid, spellId)
     self:CheckUnit(casterGuid)
-    self:Write("SPELL_FAIL", casterGuid, spellId, true)
+    self:Write3("SPELL_FAIL", casterGuid, spellId, true)
 end
 
 --- Handles SPELL_GO_SELF events.
@@ -1369,7 +1449,7 @@ end
 function ChronicleLog:SPELL_GO_SELF(itemId, spellId, casterGuid, targetGuid, castFlags, numTargetsHit, numTargetsMissed)
     self:CheckUnit(casterGuid)
     self:CheckUnit(targetGuid)
-    self:Write("SPELL_GO", itemId, spellId, casterGuid, targetGuid, castFlags, numTargetsHit, numTargetsMissed)
+    self:Write7("SPELL_GO", itemId, spellId, casterGuid, targetGuid, castFlags, numTargetsHit, numTargetsMissed)
 end
 
 --- Handles SPELL_GO_OTHER events.
@@ -1387,7 +1467,7 @@ end
 function ChronicleLog:SPELL_GO_OTHER(itemId, spellId, casterGuid, targetGuid, castFlags, numTargetsHit, numTargetsMissed)
     self:CheckUnit(casterGuid)
     self:CheckUnit(targetGuid)
-    self:Write("SPELL_GO", itemId, spellId, casterGuid, targetGuid, castFlags, numTargetsHit, numTargetsMissed)
+    self:Write7("SPELL_GO", itemId, spellId, casterGuid, targetGuid, castFlags, numTargetsHit, numTargetsMissed)
 end
 
 --- Handles SPELL_START_SELF events.
@@ -1406,7 +1486,7 @@ end
 function ChronicleLog:SPELL_START_SELF(itemId, spellId, casterGuid, targetGuid, castFlags, castTime, duration, spellType)
     self:CheckUnit(casterGuid)
     self:CheckUnit(targetGuid)
-    self:Write("SPELL_START", itemId, spellId, casterGuid, targetGuid, castFlags, castTime, duration, spellType)
+    self:Write8("SPELL_START", itemId, spellId, casterGuid, targetGuid, castFlags, castTime, duration, spellType)
 end
 
 --- Handles SPELL_START_OTHER events.
@@ -1427,7 +1507,7 @@ end
 function ChronicleLog:SPELL_START_OTHER(itemId, spellId, casterGuid, targetGuid, castFlags, castTime, duration, spellType)
     self:CheckUnit(casterGuid)
     self:CheckUnit(targetGuid)
-    self:Write("SPELL_START", itemId, spellId, casterGuid, targetGuid, castFlags, castTime, duration, spellType)
+    self:Write8("SPELL_START", itemId, spellId, casterGuid, targetGuid, castFlags, castTime, duration, spellType)
 end
 
 -- =============================================================================
@@ -1512,7 +1592,7 @@ function ChronicleLog:CHAT_MSG_LOOT(msg)
     end
 
     Chronicle:DebugPrint("LOOT: " .. looter .. " - " .. itemLink)
-    self:Write("LOOT", looter, itemLink)
+    self:Write2("LOOT", looter, itemLink)
 end
 
 --- Handles CHAT_MSG_SYSTEM events.
@@ -1524,7 +1604,7 @@ function ChronicleLog:CHAT_MSG_SYSTEM(msg)
     
     -- Check for trade pattern: "Iseut trades item Libram of the Faithful to Milkpress."
     if strfind(msg, "^%w+ trades item") then
-        self:Write("LOOT_TRADE", msg)
+        self:Write1("LOOT_TRADE", msg)
     end
 end
 

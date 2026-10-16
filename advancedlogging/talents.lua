@@ -240,7 +240,7 @@ function ChronicleLog:HandleTalentAddonMessage(message, sender)
                         end
                     end
                 end
-                self:Write("COMBATANT_TALENTS", guid, sender, tabStrings[1], tabStrings[2], tabStrings[3])
+                self:Write5("COMBATANT_TALENTS", guid, sender, tabStrings[1], tabStrings[2], tabStrings[3])
                 Chronicle:DebugPrint("TalentInfoResult: " .. sender .. " " .. table.concat(summaryParts, "/"))
             else
                 Chronicle:DebugPrint("TalentInfoResult: " .. sender .. " (no data)")

@@ -1,0 +1,11 @@
+{
+  "name": "chronicle-companion-write-arity",
+  "private": true,
+  "scripts": {
+    "check": "node check_write_arity.js ../../advancedlogging ../../tests/raid_composition_test.lua ../../tests/write_correctness_test.lua ../../*.lua",
+    "test": "node write_arity_checker_test.js"
+  },
+  "devDependencies": {
+    "luaparse": "0.3.1"
+  }
+}

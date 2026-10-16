@@ -66,6 +66,24 @@ You can also use `/chron` as a shorthand for `/chronicle`.
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
+### Development checks
+
+Install Node.js, then run the static `WriteN` arity checks:
+
+```sh
+npm ci --prefix tools/write-arity
+npm test --prefix tools/write-arity
+npm run check --prefix tools/write-arity
+```
+
+The Lua tests require Lua 5.0.3 because the baseline `Write` implementation uses Lua 5.0 vararg semantics:
+
+```sh
+tools/install_lua_5_0_3.sh .cache/lua-5.0.3
+.cache/lua-5.0.3/bin/lua tests/raid_composition_test.lua
+.cache/lua-5.0.3/bin/lua tests/write_correctness_test.lua
+```
+
 ## License
 
 [MIT](LICENSE)

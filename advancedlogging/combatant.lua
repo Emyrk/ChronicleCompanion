@@ -195,7 +195,7 @@ function ChronicleLog:WriteCombatantInfo(unit)
     local gearStr = table.concat(gearParts, "&")
     
     -- Write the log line
-    self:Write("COMBATANT_INFO",
+    self:Write12("COMBATANT_INFO",
         info.guid,
         info.name,
         info.class,

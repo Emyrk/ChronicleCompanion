@@ -216,7 +216,7 @@ function ChronicleLog:WriteCombatantTransmog(playerName, data)
     end
     
     if table.getn(parts) > 0 then
-        self:Write("COMBATANT_TRANSMOG", playerName, table.concat(parts, "&"))
+        self:Write2("COMBATANT_TRANSMOG", playerName, table.concat(parts, "&"))
     end
 end
 
@@ -289,7 +289,7 @@ function ChronicleLog:CheckUnit(guid)
     end
 
     -- Write UNIT_INFO event
-    self:Write("UNIT_INFO", guid, isMe, name, canCooperate, ownerGuid, auras, level, challenges, maxHealth, charm)
+    self:Write10("UNIT_INFO", guid, isMe, name, canCooperate, ownerGuid, auras, level, challenges, maxHealth, charm)
     
     -- Write COMBATANT_INFO for players (gear, talents, guild)
     if UnitIsPlayer(guid) == 1 then

@@ -1,2 +1,4 @@
 .idea
 tmog.ignore.lua
+node_modules/
+.cache/

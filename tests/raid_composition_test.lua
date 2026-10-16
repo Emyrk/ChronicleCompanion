@@ -12,6 +12,18 @@ ChronicleLog:Write("RAID_COMPOSITION", "PARTY_MEMBERS_CHANGED", 0, "")
 assert(ChronicleLog.buffer[1] == "1002000|RAID_COMPOSITION|PARTY_MEMBERS_CHANGED|0|")
 ChronicleLog:ClearBuffer()
 
+-- Vanilla WoW exposes string.match even though stock Lua 5.0 does not.
+if not string.match then
+    string.match = function(value, pattern)
+        local matches = { string.find(value, pattern) }
+        if not matches[1] then return nil end
+        if table.getn(matches) > 2 then
+            return matches[3]
+        end
+        return string.sub(value, matches[1], matches[2])
+    end
+end
+
 local roster = {}
 
 GetNumRaidMembers = function()
@@ -31,7 +43,7 @@ GetUnitGUID = function(unit)
 end
 
 local writes = {}
-ChronicleLog.Write = function(self, eventType, reason, memberCount, payload)
+ChronicleLog.Write3 = function(self, eventType, reason, memberCount, payload)
     table.insert(writes, {
         eventType = eventType,
         reason = reason,
