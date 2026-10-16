@@ -61,3 +61,20 @@ function Chronicle_NampowerVersion()
     end
     return version
 end
+
+--- ClassicAPI version as "X.Y.Z", decoded from CLASSIC_API_VERSION
+--- (major * 10000 + minor * 100 + patch). Empty string when ClassicAPI is not loaded,
+--- "unknown" for an old build that does not set the global.
+function Chronicle_ClassicAPIVersion()
+    local v = tonumber(CLASSIC_API_VERSION)
+    if v then
+        local major = math.floor(v / 10000)
+        local minor = math.floor(math.mod(v, 10000) / 100)
+        local patch = math.mod(v, 100)
+        return major .. "." .. minor .. "." .. patch
+    end
+    if C_NamePlate ~= nil or GetClassicExpansionLevel ~= nil then
+        return "unknown"
+    end
+    return ""
+end

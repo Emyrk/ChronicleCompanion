@@ -18,6 +18,7 @@ advancedlogging\units.lua
 advancedlogging\combatant.lua
 advancedlogging\talents.lua
 advancedlogging\config.lua
+advancedlogging\ursol.lua
 
 core.lua
 debug.lua

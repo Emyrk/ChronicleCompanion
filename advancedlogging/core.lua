@@ -279,7 +279,10 @@ end
 -- =============================================================================
 
 --- Generates a header string with player and version metadata.
---- Format: HEADER|playerGuid|realm|zone|addonVer|superWowVer|namPowerVer|xp3Ver|wowVer|wowBuild|wowBuildDate|localTime|utcTime|combatLogRange|clientType
+--- Format: HEADER|playerGuid|realm|zone|addonVer|superWowVer|namPowerVer|xp3Ver|wowVer|wowBuild|wowBuildDate|localTime|utcTime|combatLogRange|classicApi|threatMode
+--- classicApi: ClassicAPI version ("X.Y.Z" from CLASSIC_API_VERSION), empty when not loaded.
+--- threatMode: "query" (this addon asks the server for threat), "listen" (another
+--- threat addon asks, this addon records the answers) or "" (threat logging off).
 ---@return string header Pipe-delimited header line
 function ChronicleLog:GenerateHeader()
     -- Player info
@@ -290,7 +293,7 @@ function ChronicleLog:GenerateHeader()
     
     -- Addon versions
     local addonVersion = GetAddOnMetadata("ChronicleCompanion", "Version") or ""
-    local superWowVersion = ""
+    local superWowVersion = SUPERWOW_VERSION or ""
     local namPowerVersion = NAMPOWER_VERSION or ""
     
     local xp3Version = ""
@@ -308,6 +311,13 @@ function ChronicleLog:GenerateHeader()
     
     -- Combat log range
     local combatLogRange = GetCVar("CombatLogRangeCreature") or ""
+
+    -- Client mods and threat logging mode (see advancedlogging/ursol.lua)
+    local classicApi = Chronicle_ClassicAPIVersion()
+    local threatMode = ""
+    if ChronicleUrsol and ChronicleUrsol:Get("threat") then
+        threatMode = ChronicleUrsol:ThreatQueryActive() and "query" or "listen"
+    end
     
     local parts = {
         "HEADER",
@@ -323,7 +333,9 @@ function ChronicleLog:GenerateHeader()
         wowBuildDate,
         localTime,
         utcTime,
-        combatLogRange
+        combatLogRange,
+        classicApi,
+        threatMode
     }
     
     return table.concat(parts, LOG_SEP)
@@ -716,8 +728,15 @@ function ChronicleLog:WriteZoneInfo(force)
     end
     
     self:WriteHeader()
-    -- The value after zoneName is the mapID, not the instance ID
-    self:Write("ZONE_INFO", zoneName, "", inInstanceNum, instanceType, isGhost)
+    -- The value after zoneName is Chronicle's internal instance ID slot: keep it empty.
+    -- mapId (Map.dbc id, e.g. 309 for Zul'Gurub) is appended as a new last field.
+    -- Only ClassicAPI exposes it (GetInstanceInfo, 8th value); empty otherwise.
+    local mapId = ""
+    if GetInstanceInfo then
+        local ok, _, _, _, _, _, _, _, id = pcall(GetInstanceInfo)
+        if ok and id then mapId = id end
+    end
+    self:Write("ZONE_INFO", zoneName, "", inInstanceNum, instanceType, isGhost, mapId)
 end
 
 --- Updates the saved instance ID for the current zone.
