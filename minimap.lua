@@ -53,21 +53,18 @@ function ChronicleMinimapButton:Create()
         end
     end)
     
-    -- Drag handlers
+    -- Only update the cursor position while the button is being dragged.
+    local function updatePositionWhileDragging()
+        ChronicleMinimapButton:UpdatePositionFromCursor()
+    end
+
     button:SetScript("OnDragStart", function()
-        button.dragging = true
+        button:SetScript("OnUpdate", updatePositionWhileDragging)
     end)
     
     button:SetScript("OnDragStop", function()
-        button.dragging = false
+        button:SetScript("OnUpdate", nil)
         ChronicleMinimapButton:SavePosition()
-    end)
-    
-    -- Update position while dragging
-    button:SetScript("OnUpdate", function()
-        if button.dragging then
-            ChronicleMinimapButton:UpdatePositionFromCursor()
-        end
     end)
     
     -- Tooltip
