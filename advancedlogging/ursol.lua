@@ -227,8 +227,10 @@ local NEEDS = {
     combat = "fields",
     position = "position",
     marks = "marks",
+    threat = "client",
 }
 local MISSING = {
+    client = "needs the Ursol client",
     fields = "needs Nampower (GetUnitField)",
     position = "needs ClassicAPI or SuperWoW",
     marks = "needs Nampower or SuperWoW GUIDs",
@@ -237,15 +239,6 @@ local MISSING = {
 function Ursol:DetectCaps()
     local caps = self.caps
     caps.client = Chronicle_IsUrsolClient()
-    if not caps.client then
-        self.positionApi = "none"
-        caps.fields = false
-        caps.guid = false
-        caps.position = false
-        caps.marks = false
-        return
-    end
-
     self:DetectPositionApi()
     caps.fields = GetUnitField ~= nil
     caps.guid = GetUnitGUID ~= nil or SUPERWOW_VERSION ~= nil
@@ -255,7 +248,6 @@ end
 
 --- True when the client can produce this line type.
 function Ursol:Available(key)
-    if not self.caps.client then return false end
     local need = NEEDS[key]
     return not need or self.caps[need] and true or false
 end
@@ -263,7 +255,6 @@ end
 --- Text explaining why a line type is unavailable, or nil.
 function Ursol:MissingText(key)
     if self:Available(key) then return nil end
-    if not self.caps.client then return "needs the Ursol client" end
     -- positions are written in UNIT_STATE lines, which need Nampower first
     if key == "position" and not self.caps.fields then return MISSING.fields end
     return MISSING[NEEDS[key]]
@@ -889,13 +880,15 @@ local NUM_KEYS = { targetInterval = true, positionInterval = true, positionMinMo
 
 function Ursol:Status()
     self:DetectCaps()
-    if not self.caps.client then
-        Chronicle:Print("Ursol log format v" .. self.formatVersion .. " - unavailable: needs the Ursol client")
-    else
-        Chronicle:Print("Ursol log format v" .. self.formatVersion .. " - position API: " .. self.positionApi
-            .. ", threat: " .. (self:ThreatQueryActive() and "query" or "listen only")
-            .. " (" .. self:ThreatServerText() .. ")")
+    local threatText = "off (needs the Ursol client)"
+    if self:Available("threat") then
+        threatText = (self:ThreatQueryActive() and "query" or "listen only")
+            .. " (" .. self:ThreatServerText() .. ")"
     end
+    Chronicle:Print("Ursol log format v" .. self.formatVersion
+        .. " - client: " .. (self.caps.client and "Ursol" or "native 1.12")
+        .. ", position API: " .. self.positionApi
+        .. ", threat: " .. threatText)
     for key in pairs(DEFAULTS) do
         local missing = self:MissingText(key)
         Chronicle:Print("  " .. key .. " = " .. tostring(self:Get(key))

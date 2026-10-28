@@ -19,7 +19,8 @@ ChronicleLog = {
 }
 
 -- Detect Turtle WoW (build 7272) vs vanilla 1.12 (build 5875).
--- Transmog, remote talent inspection, and Ursol events are Turtle WoW-only.
+-- Transmog and remote talent inspection are Turtle WoW-only. Extra unit-data
+-- events detect Nampower, ClassicAPI, and SuperWoW independently.
 ChronicleLog.isTurtleWow = Chronicle_IsUrsolClient()
 
 
