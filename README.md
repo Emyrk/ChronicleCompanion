@@ -63,8 +63,13 @@ then use **Announce** on an instance to share its name and URL. Stock Vanilla ch
 does not make web URLs clickable; recipients need a URL-handling addon for that.
 A live, ready Sidekick is required for the upload button.
 
-This repository implements the addon half; Sidekick must implement the matching
-[file protocol](SIDEKICK_PROTOCOL.md) before end-to-end uploads work.
+This addon uses [Chronicle local RPC v1](SIDEKICK_PROTOCOL.md):
+`ChronicleRPC.requests`, `ChronicleRPC.status`, and `combat_log.upload`. A Sidekick
+build implementing that contract is required; the earlier `ChronicleSidekick.*`
+wire format is not supported. Sidekick owns managed archive retention and can
+retry either upload or Chronicle processing without a new log boundary. Future
+RPC/cache ideas are tracked in [Sidekick #32](https://github.com/Emyrk/chronicle-sidekick/issues/32),
+not implemented v1 features.
 
 ### Slash Commands
 

@@ -1,4 +1,4 @@
--- Sidekick IPC v1. Data files are TSV, never executable Lua. See SIDEKICK_PROTOCOL.md.
+-- Chronicle local RPC v1. Data files are TSV, never executable Lua. See SIDEKICK_PROTOCOL.md.
 ChronicleSidekick = { pending = {}, elapsed = 0 }
 local Sidekick = ChronicleSidekick
 local STATES = { queued = true, uploading = true, processing = true, complete = true, failed = true }
@@ -11,26 +11,39 @@ local function fields(line)
     return result
 end
 
-local function safeName(value)
-    return value and string.find(value, "^ChronicleUpload_[%w_%-]+%.txt$") ~= nil
+local METHOD = "combat_log.upload"
+local function validID(value)
+    return type(value) == "string" and string.len(value) >= 1 and string.len(value) <= 200
+        and string.find(value, "^[A-Za-z0-9_%-]+$") ~= nil
+end
+
+local function archiveName(id)
+    return "ChronicleUpload_" .. id .. ".txt"
+end
+
+local function timestamp(value)
+    if type(value) ~= "string" or not string.find(value, "^%d+$") then return nil end
+    local number = tonumber(value)
+    if not number or number > 9007199254740991 or number < 0 then return nil end
+    return number
 end
 
 -- Strictly parse a complete snapshot; malformed replacements never erase good state.
 function Sidekick:ParseStatus(content)
-    if type(content) ~= "string" or string.len(content) > 262144 or string.sub(content, -1) ~= "\n" then return nil end
+    if type(content) ~= "string" or string.len(content) > 262144 or string.sub(content, -1) ~= "\n" or string.find(content, "[%z\001-\008\011-\031\127]") then return nil end
     local status = { requests = {} }
     local byID = {}
     local first = true
     for line in string.gfind(content, "([^\n]+)\n") do
         local f = fields(line)
         if first then
-            if table.getn(f) ~= 6 or f[1] ~= "SIDEKICK" or f[2] ~= "1" or not tonumber(f[4]) then return nil end
-            status.version, status.heartbeat, status.readiness, status.message = f[3], tonumber(f[4]), f[5], f[6]
+            if table.getn(f) ~= 6 or f[1] ~= "RPC" or f[2] ~= "1" or not timestamp(f[4]) then return nil end
+            status.version, status.heartbeat, status.readiness, status.message = f[3], timestamp(f[4]), f[5], f[6]
             first = false
-        elseif f[1] == "REQUEST" then
-            if table.getn(f) ~= 7 or not string.find(f[2], "^[%w_%-]+$") or byID[f[2]]
-                or not safeName(f[3]) or not STATES[f[4]] or not tonumber(f[5]) or not tonumber(f[6]) then return nil end
-            local request = { id = f[2], filename = f[3], state = f[4], created = tonumber(f[5]), updated = tonumber(f[6]), message = f[7], instances = {} }
+        elseif f[1] == "RESPONSE" then
+            if table.getn(f) ~= 7 or not validID(f[2]) or byID[f[2]]
+                or f[3] ~= METHOD or not STATES[f[4]] or not timestamp(f[5]) or not timestamp(f[6]) then return nil end
+            local request = { id = f[2], filename = archiveName(f[2]), method = f[3], state = f[4], created = tonumber(f[5]), updated = tonumber(f[6]), message = f[7], instances = {} }
             byID[request.id] = request
             table.insert(status.requests, request)
         elseif f[1] == "INSTANCE" then
@@ -49,6 +62,15 @@ function Sidekick:LoadPending()
     if not ChronicleCompanionDB then return end
     if not ChronicleCompanionDB.sidekickPending then ChronicleCompanionDB.sidekickPending = {} end
     self.pending = ChronicleCompanionDB.sidekickPending
+    for _, request in pairs(self.pending) do
+        if not request.rpcVersion then
+            -- Do not silently lose archives queued by the incompatible draft.
+            -- Migration is explicit user action, never an automatic upload.
+            request.rpcVersion = 1
+            request.state = "failed"
+            request.message = "Pre-RPC request: Retry to submit this archive using RPC v1"
+        end
+    end
 end
 
 function Sidekick:Ready()
@@ -62,7 +84,7 @@ end
 
 function Sidekick:Poll()
     self:LoadPending()
-    local content = ChronicleFile:ReadFile("ChronicleSidekick.status")
+    local content = ChronicleFile:ReadFile("ChronicleRPC.status")
     local status = self:ParseStatus(content)
     if status then
         self.status = status
@@ -79,12 +101,13 @@ end
 
 function Sidekick:NextID()
     ChronicleCompanionDB.sidekickSequence = (ChronicleCompanionDB.sidekickSequence or 0) + 1
-    local player = string.gsub(UnitName("player") or "Unknown", "[^%w]", "")
-    local realm = string.gsub(GetRealmName() or "Unknown", "[^%w]", "")
-    local id = player .. "_" .. realm .. "_" .. time() .. "_" .. ChronicleCompanionDB.sidekickSequence
+    local player = string.sub(string.gsub(UnitName("player") or "Unknown", "[^A-Za-z0-9]", ""), 1, 60)
+    local realm = string.sub(string.gsub(GetRealmName() or "Unknown", "[^A-Za-z0-9]", ""), 1, 60)
+    local prefix = player .. "_" .. realm .. "_" .. time() .. "_"
+    local id = prefix .. ChronicleCompanionDB.sidekickSequence
     while ChronicleFile:FileExists("ChronicleUpload_" .. id .. ".txt") do
         ChronicleCompanionDB.sidekickSequence = ChronicleCompanionDB.sidekickSequence + 1
-        id = id .. "_" .. ChronicleCompanionDB.sidekickSequence
+        id = prefix .. ChronicleCompanionDB.sidekickSequence
     end
     return id
 end
@@ -93,6 +116,7 @@ end
 -- them through FlushToFile (which currently clears buffers even on write failure).
 -- Lua callbacks run serially: no logger callback can append during this boundary.
 function Sidekick:Archive(id)
+    if not validID(id) then return nil, "Invalid request ID" end
     local log = ChronicleLog
     local filename = log:GetLogFilename()
     local existing, err = ChronicleFile:ReadFile(filename)
@@ -110,7 +134,7 @@ function Sidekick:Archive(id)
     end
     local content = table.concat(parts)
     if content == "" then return nil, "There are no logs to upload" end
-    local archive = "ChronicleUpload_" .. id .. ".txt"
+    local archive = archiveName(id)
     if ChronicleFile:FileExists(archive) then return nil, "Archive already exists" end
     local ok
     ok, err = ChronicleFile:WriteFile(archive, content)
@@ -120,19 +144,30 @@ function Sidekick:Archive(id)
     ok, err = ChronicleFile:WriteFile(filename, "")
     if not ok then return nil, "Archive saved, but active log could not be cleared: " .. tostring(err) end
     if ChronicleFile:ReadFile(filename) ~= "" then return nil, "Archive saved, but active log clear could not be verified" end
-    self.pending[id] = { id = id, filename = archive, created = time(), state = "waiting", message = "Not yet queued" }
+    self.pending[id] = { id = id, filename = archive, created = time(), rpcVersion = 1, state = "waiting", message = "Not yet queued" }
     log:ResetLogSession()
     return archive
 end
 
 function Sidekick:Queue(request, action)
-    if not safeName(request.filename) or not string.find(request.id, "^[%w_%-]+$") then return false, "Invalid request" end
+    if not validID(request.id) or request.filename ~= archiveName(request.id)
+        or (action ~= "request" and action ~= "retry") then return false, "Invalid request" end
+    request.rpcVersion = 1
+    local requestedAt = request.created or time()
+    if action == "retry" then
+        -- Sidekick consumes each retry timestamp once. Persist the watermark even
+        -- across acknowledgments/reloads, and make rapid attempts distinct.
+        local times = ChronicleCompanionDB.sidekickRetryTimes or {}
+        ChronicleCompanionDB.sidekickRetryTimes = times
+        requestedAt = math.max(time(), (times[request.id] or 0) + 1, (request.retryAfter or 0) + 1)
+        times[request.id] = requestedAt
+    end
     -- A leading newline isolates a previously interrupted append. Blank lines are ignored.
-    local line = "\n1\t" .. action .. "\t" .. request.id .. "\t" .. time() .. "\t" .. request.filename .. "\n"
-    local ok, err = ChronicleFile:AppendToFile("ChronicleSidekick.requests", line)
+    local line = "\n1\t" .. action .. "\t" .. request.id .. "\t" .. requestedAt .. "\t" .. METHOD .. "\t" .. request.filename .. "\n"
+    local ok, err = ChronicleFile:AppendToFile("ChronicleRPC.requests", line)
     request.message = ok and "Waiting for Sidekick" or ("Queue failed: " .. tostring(err))
     request.state = ok and "waiting" or "failed"
-    if self.RefreshUI then self:RefreshUI() end
+    self:Poll()
     return ok, err
 end
 
@@ -144,7 +179,7 @@ function Sidekick:ArchiveAndUpload()
     local filename, err = self:Archive(id)
     if not filename then Chronicle:Print("Upload not queued: " .. tostring(err)); return false end
     local ok
-    ok, err = self:Queue(self.pending[id], "upload")
+    ok, err = self:Queue(self.pending[id], "request")
     Chronicle:Print(ok and ("Archived and queued: " .. filename) or ("Archive retained; retry upload: " .. tostring(err)))
     if self.OpenTray then self:OpenTray("sidekick") end
     ChronicleLog:RefreshOptionsPanel()
@@ -156,7 +191,7 @@ function Sidekick:Retry(id)
     local ready, reason = self:Ready()
     if not ready then Chronicle:Print(reason); return false end
     local request = self.pending[id]
-    local action = request and request.retryAfter and "retry" or "upload"
+    local action = request and request.retryAfter and "retry" or "request"
     if not request and self.status then
         for _, candidate in ipairs(self.status.requests) do
             if candidate.id == id and candidate.state == "failed" then
