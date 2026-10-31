@@ -22,11 +22,16 @@ identical results). Existing events are unchanged, except `HEADER` and
 | UNIT_STATE (health, power), UNIT_TARGET, UNIT_COMBAT | Nampower with `GetUnitField` | off, events not registered |
 | UNIT_STATE position fields | ClassicAPI (any visible unit) or SuperWoW (friendly units only) | fields left empty, no position poll |
 | RAID_MARK | `GetRaidTargetIndex` and unit GUIDs (Nampower `GetUnitGUID` or SuperWoW); `markN` tokens of ClassicAPI / SuperWoW make it more complete | off |
-| THREAT, THREAT_TANK | a server with the TWThreat threat API (TurtleWoW-based servers); TWThreat or pfUI-ThreatPlates optional | nothing written; requests stop by themselves (see `threatQuery`) |
+| THREAT, THREAT_TANK | the Ursol client and a server with the TWThreat threat API; TWThreat or pfUI-ThreatPlates optional | nothing written; requests stop by themselves (see `threatQuery`) |
+
+These requirements are detected independently. A native build 5875 client with
+Nampower can log health and power, and gains positions when ClassicAPI or
+SuperWoW supplies `UnitPosition`; it does not need the Ursol client for those
+features.
 
 Line types the client cannot produce are greyed out in the options panel with
 the reason, and marked `(off: ...)` in `/chronicle ursol`. The saved setting is
-kept, so they come back on with the DLL.
+kept, so it comes back when the required provider is available.
 
 ## Events
 
@@ -74,6 +79,13 @@ during the last 15 s. Lines come from:
 - a position poll every `positionInterval` (1 s), only while you are in combat.
 
 Notes:
+- Health and power come from Nampower. ClassicAPI and SuperWoW are not needed
+  unless positions are enabled.
+- SuperWoW positions are limited to friendly units. Hostile coordinates can be
+  empty even when their health and power are available.
+- ClassicAPI supplies the per-unit `mapId`. Without it, SuperWoW coordinates can
+  still be logged, but `mapId` is empty unless the current map was identified
+  separately through ClassicAPI `GetInstanceInfo`.
 - A druid's power is the one of their current form: energy in cat form, rage
   in bear form, mana otherwise. The caster mana is not visible while shifted.
 - Check `maxHp` for creatures. If it is 100, the server sends a percentage
@@ -158,6 +170,9 @@ command: `/chronicle ursol` lists the settings, `/chronicle ursol <setting>
 
 - Only units your client sees are logged. Several raiders logging together
   cover the whole raid.
+- Group members and pets are logged directly. A target, mouseover, or nameplate
+  unit is not logged merely because it has that token; hostile units must also
+  have been seen in a combat event and remain in the 15-second tracking window.
 - The server only answers threat for **your** target. Shared relays from the
   group fill in the other mobs.
 - File size grows with UNIT_STATE lines. Not measured yet in a
