@@ -67,3 +67,15 @@ function ChronicleFile:FileExists(filename)
     end
     return result == true
 end
+
+--- Probe using the read API rather than CustomFileExists. The reported runtime
+--- marked every candidate as existing; never loop on that result.
+--- @return boolean|nil: true if readable, false if missing, nil on error
+--- @return string|nil: error message
+function ChronicleFile:ProbeFile(filename)
+    local content, err = self:ReadFile(filename)
+    if err then return nil, err end
+    if content == nil then return false end
+    if type(content) ~= "string" then return nil, "ReadCustomFile returned an unexpected value" end
+    return true
+end

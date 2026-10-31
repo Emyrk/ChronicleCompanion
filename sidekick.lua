@@ -116,13 +116,16 @@ function Sidekick:NextID()
     local player = string.sub(string.gsub(UnitName("player") or "Unknown", "[^A-Za-z0-9]", ""), 1, 60)
     local realm = string.sub(string.gsub(GetRealmName() or "Unknown", "[^A-Za-z0-9]", ""), 1, 60)
     local prefix = player .. "_" .. realm .. "_" .. time() .. "_"
-    -- Never trust a filesystem probe to eventually return false. A broken API,
-    -- precision-stalled sequence, or unexpected collisions must fail closed.
+    -- ReadCustomFile distinguishes missing files from readable archives. Do not
+    -- use CustomFileExists here: on the reported client it marked every candidate
+    -- occupied. Keep a hard bound even with the read-based probe.
     for attempt = 1, 32 do
         sequence = sequence + 1
         ChronicleCompanionDB.sidekickSequence = sequence
         local id = prefix .. string.format("%.0f", sequence)
-        if not ChronicleFile:FileExists(archiveName(id)) then return id end
+        local exists, err = ChronicleFile:ProbeFile(archiveName(id))
+        if exists == nil then return nil, "Unable to probe archive filename: " .. tostring(err) end
+        if not exists then return id end
     end
     return nil, "Could not allocate an unused archive name after 32 checks; active log was not changed"
 end
@@ -137,7 +140,7 @@ function Sidekick:Archive(id)
     self:Trace("reading active log " .. filename)
     local existing, err = ChronicleFile:ReadFile(filename)
     if err then return nil, err end
-    if (existing ~= nil and type(existing) ~= "string") or (existing == nil and ChronicleFile:FileExists(filename)) then return nil, "Unable to read active log" end
+    if existing ~= nil and type(existing) ~= "string" then return nil, "Unable to read active log" end
     self:Trace("building snapshot")
     local parts = { existing or "" }
     local pending = log.pendingFlush
@@ -152,7 +155,9 @@ function Sidekick:Archive(id)
     local content = table.concat(parts)
     if content == "" then return nil, "There are no logs to upload" end
     local archive = archiveName(id)
-    if ChronicleFile:FileExists(archive) then return nil, "Archive already exists" end
+    local exists, probeError = ChronicleFile:ProbeFile(archive)
+    if exists == nil then return nil, "Unable to probe archive: " .. tostring(probeError) end
+    if exists then return nil, "Archive already exists" end
     local ok
     self:Trace("writing archive " .. archive .. " bytes=" .. string.len(content))
     ok, err = ChronicleFile:WriteFile(archive, content)

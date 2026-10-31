@@ -237,18 +237,39 @@ assert(not sk:Retry("old")); assert(writes["ChronicleRPC.requests"] == priorWrit
 files["ChronicleRPC.status"] = "RPC\t1\t0.16.0\t1000\tready\t\n"
 sk:Poll(); assert(sk.pending.old)
 
--- A broken/stuck existence probe must not lock the game or touch the log.
+-- A client reporting every CustomFileExists name occupied must still upload.
 reset()
 files["ChronicleRPC.status"] = snapshot
 local originalExists = CustomFileExists
 local probes = 0
 CustomFileExists = function() probes = probes + 1; return true end
+assert(sk:ArchiveAndUpload())
+assert(probes == 0, "upload must not depend on the broken existence API")
+assert(files["Chronicle_Tester.txt"] == "" and ChronicleLog.bufferSize == 0)
+assert(files["ChronicleRPC.requests"] and not sk.uploadBusy)
+CustomFileExists = originalExists
+-- Real collisions remain bounded and never overwrite an archive or active log.
+reset(); files["ChronicleRPC.status"] = snapshot
+local originalRead = ReadCustomFile
+local reads = 0
+ReadCustomFile = function(name)
+    if string.find(name, "^ChronicleUpload_") then reads = reads + 1; return "existing archive" end
+    return originalRead(name)
+end
 assert(not sk:ArchiveAndUpload())
-assert(probes == 32, "archive-name allocation must have a hard bound")
+assert(reads == 32)
 assert(files["Chronicle_Tester.txt"] ~= "" and ChronicleLog.bufferSize == 1)
 assert(not files["ChronicleRPC.requests"] and not sk.uploadBusy)
 assert(string.find(files["ChronicleRPC.debug"], "32 checks", 1, true))
-CustomFileExists = originalExists
+ReadCustomFile = originalRead
+-- Probe failures must not be mistaken for an unused name.
+ReadCustomFile = function(name)
+    if string.find(name, "^ChronicleUpload_") then error("permission denied") end
+    return originalRead(name)
+end
+assert(not sk:ArchiveAndUpload())
+assert(files["Chronicle_Tester.txt"] ~= "" and not files["ChronicleRPC.requests"])
+ReadCustomFile = originalRead
 for _, invalidSequence in ipairs({ 9007199254740992, 1 / 0, -1, 1.5, "broken" }) do
     ChronicleCompanionDB.sidekickSequence = invalidSequence
     assert(not sk:NextID(), "invalid sequence must fail closed, not loop")

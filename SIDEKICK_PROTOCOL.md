@@ -447,7 +447,12 @@ contents or credentials. Polling and chat announcements do not write the trace.
 After a client hang, retain the trace and both active/archive log files. The last
 stage identifies the operation entered; it does not prove that operation finished.
 
-Archive-name allocation is limited to 32 probes and rejects invalid/precision-
+Archive-name allocation uses `ReadCustomFile` (nil means missing; any string,
+including empty, means occupied) rather than `CustomFileExists`. The reported
+in-game runtime marked all generated names as existing through the latter API,
+so the original collision loop never terminated. Read errors abort safely and
+existing readable archives are never overwritten. Allocation is limited to 32
+probes and rejects invalid/precision-
 stalled saved counters. Native slider callbacks are suppressed while the options
 panel programmatically refreshes values, avoiding recursive refresh callbacks.
 These guards address identifiable hazards; they do not establish the cause of any
