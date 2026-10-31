@@ -237,6 +237,33 @@ assert(not sk:Retry("old")); assert(writes["ChronicleRPC.requests"] == priorWrit
 files["ChronicleRPC.status"] = "RPC\t1\t0.16.0\t1000\tready\t\n"
 sk:Poll(); assert(sk.pending.old)
 
+-- A broken/stuck existence probe must not lock the game or touch the log.
+reset()
+files["ChronicleRPC.status"] = snapshot
+local originalExists = CustomFileExists
+local probes = 0
+CustomFileExists = function() probes = probes + 1; return true end
+assert(not sk:ArchiveAndUpload())
+assert(probes == 32, "archive-name allocation must have a hard bound")
+assert(files["Chronicle_Tester.txt"] ~= "" and ChronicleLog.bufferSize == 1)
+assert(not files["ChronicleRPC.requests"] and not sk.uploadBusy)
+assert(string.find(files["ChronicleRPC.debug"], "32 checks", 1, true))
+CustomFileExists = originalExists
+for _, invalidSequence in ipairs({ 9007199254740992, 1 / 0, -1, 1.5, "broken" }) do
+    ChronicleCompanionDB.sidekickSequence = invalidSequence
+    assert(not sk:NextID(), "invalid sequence must fail closed, not loop")
+end
+ChronicleCompanionDB.sidekickSequence = 0 / 0
+assert(not sk:NextID(), "NaN sequence must fail closed")
+ChronicleCompanionDB.sidekickSequence = 0
+sk.uploadBusy = true
+assert(not sk:ArchiveAndUpload(), "reentrant uploads must be ignored")
+sk.uploadBusy = nil
+reset(); files["ChronicleRPC.status"] = snapshot
+assert(sk:ArchiveAndUpload())
+assert(string.find(files["ChronicleRPC.debug"], "complete: request queued", 1, true))
+assert(not sk.trace and not sk.uploadBusy)
+
 -- Background polling remains bounded, with faster refresh only for visible Sidekick.
 local polls = 0
 sk.Poll = function() polls = polls + 1 end

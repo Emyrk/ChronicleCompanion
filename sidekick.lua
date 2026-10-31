@@ -99,17 +99,32 @@ function Sidekick:Poll()
     if self.RefreshUI then self:RefreshUI() end
 end
 
+-- A diagnostic breadcrumb trail survives a client kill. Only manual upload
+-- attempts write it; background polling never touches it. No log contents/tokens.
+function Sidekick:Trace(stage)
+    if not self.trace then return end
+    table.insert(self.trace, tostring(time()) .. " " .. stage)
+    ChronicleFile:WriteFile("ChronicleRPC.debug", table.concat(self.trace, string.char(10)) .. string.char(10))
+end
+
 function Sidekick:NextID()
-    ChronicleCompanionDB.sidekickSequence = (ChronicleCompanionDB.sidekickSequence or 0) + 1
+    local sequence = ChronicleCompanionDB.sidekickSequence or 0
+    if type(sequence) ~= "number" or sequence ~= sequence or sequence < 0
+        or sequence >= 9007199254740000 or sequence ~= math.floor(sequence) then
+        return nil, "Invalid saved upload sequence; active log was not changed"
+    end
     local player = string.sub(string.gsub(UnitName("player") or "Unknown", "[^A-Za-z0-9]", ""), 1, 60)
     local realm = string.sub(string.gsub(GetRealmName() or "Unknown", "[^A-Za-z0-9]", ""), 1, 60)
     local prefix = player .. "_" .. realm .. "_" .. time() .. "_"
-    local id = prefix .. ChronicleCompanionDB.sidekickSequence
-    while ChronicleFile:FileExists("ChronicleUpload_" .. id .. ".txt") do
-        ChronicleCompanionDB.sidekickSequence = ChronicleCompanionDB.sidekickSequence + 1
-        id = prefix .. ChronicleCompanionDB.sidekickSequence
+    -- Never trust a filesystem probe to eventually return false. A broken API,
+    -- precision-stalled sequence, or unexpected collisions must fail closed.
+    for attempt = 1, 32 do
+        sequence = sequence + 1
+        ChronicleCompanionDB.sidekickSequence = sequence
+        local id = prefix .. string.format("%.0f", sequence)
+        if not ChronicleFile:FileExists(archiveName(id)) then return id end
     end
-    return id
+    return nil, "Could not allocate an unused archive name after 32 checks; active log was not changed"
 end
 
 -- Snapshot disk + outstanding deferred lines + current buffer without first draining
@@ -119,9 +134,11 @@ function Sidekick:Archive(id)
     if not validID(id) then return nil, "Invalid request ID" end
     local log = ChronicleLog
     local filename = log:GetLogFilename()
+    self:Trace("reading active log " .. filename)
     local existing, err = ChronicleFile:ReadFile(filename)
     if err then return nil, err end
     if (existing ~= nil and type(existing) ~= "string") or (existing == nil and ChronicleFile:FileExists(filename)) then return nil, "Unable to read active log" end
+    self:Trace("building snapshot")
     local parts = { existing or "" }
     local pending = log.pendingFlush
     if pending then
@@ -137,14 +154,19 @@ function Sidekick:Archive(id)
     local archive = archiveName(id)
     if ChronicleFile:FileExists(archive) then return nil, "Archive already exists" end
     local ok
+    self:Trace("writing archive " .. archive .. " bytes=" .. string.len(content))
     ok, err = ChronicleFile:WriteFile(archive, content)
     if not ok then return nil, err end
+    self:Trace("verifying archive")
     local check = ChronicleFile:ReadFile(archive)
     if check ~= content then return nil, "Archive verification failed; active log was not cleared" end
+    self:Trace("clearing active log")
     ok, err = ChronicleFile:WriteFile(filename, "")
     if not ok then return nil, "Archive saved, but active log could not be cleared: " .. tostring(err) end
+    self:Trace("verifying cleared active log")
     if ChronicleFile:ReadFile(filename) ~= "" then return nil, "Archive saved, but active log clear could not be verified" end
     self.pending[id] = { id = id, filename = archive, created = time(), rpcVersion = 1, state = "waiting", message = "Not yet queued" }
+    self:Trace("resetting log session")
     log:ResetLogSession()
     return archive
 end
@@ -164,26 +186,49 @@ function Sidekick:Queue(request, action)
     end
     -- A leading newline isolates a previously interrupted append. Blank lines are ignored.
     local line = "\n1\t" .. action .. "\t" .. request.id .. "\t" .. requestedAt .. "\t" .. METHOD .. "\t" .. request.filename .. "\n"
+    self:Trace("appending RPC request")
     local ok, err = ChronicleFile:AppendToFile("ChronicleRPC.requests", line)
     request.message = ok and "Waiting for Sidekick" or ("Queue failed: " .. tostring(err))
     request.state = ok and "waiting" or "failed"
+    self:Trace("polling RPC response")
     self:Poll()
     return ok, err
 end
 
 function Sidekick:ArchiveAndUpload()
+    if self.uploadBusy then return false end
+    self.uploadBusy = true
+    self.trace = {}
+    local function finish(ok, message)
+        Sidekick:Trace(message)
+        Sidekick.trace = nil
+        Sidekick.uploadBusy = nil
+        return ok
+    end
+    self:Trace("checking Sidekick readiness")
     self:Poll()
     local ready, reason = self:Ready()
-    if not ready then Chronicle:Print(reason); return false end
-    local id = self:NextID()
-    local filename, err = self:Archive(id)
-    if not filename then Chronicle:Print("Upload not queued: " .. tostring(err)); return false end
+    if not ready then Chronicle:Print(reason); return finish(false, reason) end
+    self:Trace("allocating request ID")
+    local id, err = self:NextID()
+    if not id then
+        Chronicle:Print("Upload not queued: " .. tostring(err))
+        return finish(false, tostring(err))
+    end
+    local filename
+    filename, err = self:Archive(id)
+    if not filename then
+        Chronicle:Print("Upload not queued: " .. tostring(err))
+        return finish(false, tostring(err))
+    end
     local ok
     ok, err = self:Queue(self.pending[id], "request")
     Chronicle:Print(ok and ("Archived and queued: " .. filename) or ("Archive retained; retry upload: " .. tostring(err)))
+    self:Trace("opening Sidekick tray")
     if self.OpenTray then self:OpenTray("sidekick") end
+    self:Trace("refreshing options")
     ChronicleLog:RefreshOptionsPanel()
-    return ok
+    return finish(ok, ok and "complete: request queued" or ("queue failed: " .. tostring(err)))
 end
 
 function Sidekick:Retry(id)

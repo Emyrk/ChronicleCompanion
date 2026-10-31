@@ -436,3 +436,19 @@ addon-readable SQLite cache for larger Chronicle datasets. Instance preparation,
 character/guild/ranking/roster/encounter/loot queries, subscriptions, arbitrary API
 proxying, and cancellation remain outside v1. No addon SQLite dependency or
 additional method is introduced here; future methods need an agreed contract.
+
+### Diagnosing an upload stall
+
+A manual Archive and Upload attempt writes a bounded local breadcrumb trail to
+`CustomData/ChronicleRPC.debug`. This is diagnostic text, **not an RPC file**;
+Sidekick must ignore it. The latest attempt replaces the previous trace. It
+contains stages, timestamps, archive filenames, and byte counts, but no combat-log
+contents or credentials. Polling and chat announcements do not write the trace.
+After a client hang, retain the trace and both active/archive log files. The last
+stage identifies the operation entered; it does not prove that operation finished.
+
+Archive-name allocation is limited to 32 probes and rejects invalid/precision-
+stalled saved counters. Native slider callbacks are suppressed while the options
+panel programmatically refreshes values, avoiding recursive refresh callbacks.
+These guards address identifiable hazards; they do not establish the cause of any
+reported in-game hang without client diagnostics.

@@ -106,6 +106,7 @@ tools/install_lua_5_0_3.sh .cache/lua-5.0.3
 .cache/lua-5.0.3/bin/lua tests/talent_invalidation_test.lua
 .cache/lua-5.0.3/bin/lua tests/sidekick_test.lua
 .cache/lua-5.0.3/bin/lua tests/sidekick_ui_test.lua
+.cache/lua-5.0.3/bin/lua tests/options_refresh_test.lua
 ```
 
 ## License
