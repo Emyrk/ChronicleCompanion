@@ -2,7 +2,9 @@
 -- WoW 1.12 scripts use the global `this`; keep transport/state in sidekick.lua.
 local UI = {}
 local MAX_REQUESTS = 20
-local ROW_HEIGHT = 58
+local GROUP_HEADER = 38
+local INSTANCE_HEIGHT = 36
+local GROUP_GAP = 6
 local CHANNELS = { "SAY", "YELL", "GUILD", "PARTY", "RAID" }
 local CHANNEL_NAMES = { "Say", "Yell", "Guild", "Party", "Raid" }
 local channelIndex = 1
@@ -125,6 +127,29 @@ function UI:GetRow(index)
     return row
 end
 
+function UI:GetGroup(index)
+    local group = self.groups[index]
+    if group then return group end
+    group = CreateFrame("Frame", nil, self.content)
+    group:SetWidth(248)
+    group:SetBackdrop({
+        bgFile = "Interface" .. string.char(92) .. "Tooltips" .. string.char(92) .. "UI-Tooltip-Background",
+        edgeFile = "Interface" .. string.char(92) .. "Tooltips" .. string.char(92) .. "UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 12,
+        insets = { left = 3, right = 3, top = 3, bottom = 3 }
+    })
+    group:SetBackdropColor(0, 0, 0, 0.55)
+    group:SetBackdropBorderColor(0.4, 0.4, 0.4, 0.8)
+    self.groups[index] = group
+    return group
+end
+
+local function LogTitle(request)
+    local created = tonumber(request.created)
+    if created and created > 0 then return "Log - " .. date("%b %d, %H:%M", created) end
+    return "Uploaded log"
+end
+
 function UI:History()
     local status = ChronicleSidekick.status or {}
     local requests = {}
@@ -156,52 +181,76 @@ function UI:History()
 
     local count = 0
     local height = 0
-    for i = 1, math.min(table.getn(requests), MAX_REQUESTS) do
+    local groupCount = math.min(table.getn(requests), MAX_REQUESTS)
+    for i = 1, groupCount do
         local request = requests[i]
+        local instances = request.instances or {}
+        local group = self:GetGroup(i)
+        group:ClearAllPoints()
+        group:SetPoint("TOPLEFT", 0, -height)
+        group:Show()
+        local detail = table.getn(instances) .. (table.getn(instances) == 1 and " instance" or " instances")
+        if request.state ~= "complete" then
+            local states = { waiting = "Waiting for Sidekick", queued = "Queued", uploading = "Uploading", processing = "Processing", failed = "Failed" }
+            detail = (states[request.state] or "Pending") .. " - " .. detail
+            if request.message and request.message ~= "" then detail = detail .. ": " .. Plain(request.message, 180) end
+        elseif table.getn(instances) == 0 then
+            detail = "No instance links returned"
+        end
+        local headerHeight = request.state ~= "complete" and request.message and request.message ~= "" and 50 or GROUP_HEADER
         count = count + 1
         local row = self:GetRow(count)
+        row:SetParent(group)
         row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", 0, -height)
-        row:SetHeight(ROW_HEIGHT)
-        row.title:SetWidth(request.state == "failed" and 190 or 244)
-        row.title:SetText(Plain(request.filename or request.id, 90))
-        row.detail:SetText(Plain(request.state or "pending", 32) .. ": " .. Plain(request.message, 180))
+        row:SetPoint("TOPLEFT", 8, -7)
+        row:SetWidth(232)
+        row:SetHeight(headerHeight - 7)
+        row.title:SetWidth(request.state == "failed" and 178 or 232)
+        row.title:SetText("|cffffd100" .. LogTitle(request) .. "|r")
+        row.detail:SetWidth(232)
+        row.detail:SetHeight(headerHeight - 25)
+        row.detail:SetText(detail)
         row.share:Hide()
         row.action:ClearAllPoints()
         row.action:SetPoint("TOPRIGHT", 0, 0)
         row.action.requestID = request.id
         row.action.url = nil
         row.action:SetText("Retry")
-        if request.state == "failed" and request.id then row.action:Show()
-        else row.action:Hide() end
+        if request.state == "failed" and request.id then row.action:Show() else row.action:Hide() end
         row:Show()
-        height = height + ROW_HEIGHT
-        local instances = request.instances or {}
+        local groupHeight = headerHeight
         for j = 1, table.getn(instances) do
             local instance = instances[j]
             count = count + 1
             row = self:GetRow(count)
+            row:SetParent(group)
             row:ClearAllPoints()
-            row:SetPoint("TOPLEFT", 0, -height)
-            row:SetHeight(46)
-            row.title:SetWidth(244)
-            row.title:SetText(Plain(instance.name or instance.id or "Instance", 90))
+            row:SetPoint("TOPLEFT", 16, -groupHeight)
+            row:SetWidth(224)
+            row:SetHeight(INSTANCE_HEIGHT)
+            row.title:SetWidth(224)
+            row.title:SetText(j .. ". " .. Plain(instance.name or instance.id or "Instance", 90))
             row.detail:SetText("")
             row.action:ClearAllPoints()
-            row.action:SetPoint("TOPRIGHT", 0, -22)
+            row.action:SetPoint("TOPRIGHT", 0, -17)
             row.action.requestID = nil
             row.action.url = CopyURL(instance.url)
             row.action:SetText("Copy")
             if row.action.url ~= "" then row.action:Show() else row.action:Hide() end
+            row.share:ClearAllPoints()
+            row.share:SetPoint("TOPRIGHT", -54, -17)
             row.share.url = row.action.url
             row.share.instanceName = instance.name or instance.id or "Instance"
             if row.share.url ~= "" then row.share:Show() else row.share:Hide() end
             row:Show()
-            height = height + 46
+            groupHeight = groupHeight + INSTANCE_HEIGHT
         end
+        group:SetHeight(groupHeight + 7)
+        height = height + groupHeight + 7 + GROUP_GAP
     end
     for i = count + 1, table.getn(self.rows) do self.rows[i]:Hide() end
-    self.empty:SetText(count == 0 and "No upload requests yet." or "Latest 20 requests and their instance links.")
+    for i = groupCount + 1, table.getn(self.groups) do self.groups[i]:Hide() end
+    self.empty:SetText(count == 0 and "No uploads yet." or "Recent logs")
     self.content:SetHeight(math.max(height, 1))
     self.scroll:UpdateScrollChildRect()
     local maximum = math.max(0, height - self.scroll:GetHeight())
@@ -292,6 +341,7 @@ function UI:Create(panel)
     self.content:SetHeight(1)
     self.scroll:SetScrollChild(self.content)
     self.rows = {}
+    self.groups = {}
     local copyLabel = Label(side, 260, "GameFontDisableSmall")
     copyLabel:SetPoint("BOTTOMLEFT", 20, 51)
     copyLabel:SetText("Copy link: select a link, then Ctrl+C")

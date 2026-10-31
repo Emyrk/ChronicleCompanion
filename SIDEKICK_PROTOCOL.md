@@ -411,7 +411,10 @@ Sidekick-written SQLite cache for larger queryable results.
   unit, talent, transmog, instance-ID, raid-composition, and Ursol tracking state.
 - `/clog` has one collapsible right tray, switched between Extra Events and
   Sidekick. Sidekick shows recent responses and every instance link on displayed
-  responses, with Copy and explicit Announce actions (Say/Yell/Guild/Party/Raid).
+  responses, grouped in bordered log cards with local date/time headings and
+  instance counts instead of raw archive filenames. Completed logs with links do
+  not show a redundant complete label; pending/error states stay visible. Instance
+  rows have Copy and explicit Announce actions (Say/Yell/Guild/Party/Raid).
   Announcements include instance name and URL. No polling sends chat or retries.
 
 ### Verification and remaining integration checks

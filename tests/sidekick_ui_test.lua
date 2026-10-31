@@ -14,7 +14,11 @@ function methods:SetHeight(n) self.height = n end
 function methods:GetHeight() return self.height end
 function methods:SetPoint() end
 function methods:ClearAllPoints() end
-function methods:SetBackdrop() end
+function methods:SetBackdrop(value) self.backdrop = value end
+function methods:SetBackdropColor() end
+function methods:SetBackdropBorderColor() end
+function methods:SetParent(parent) self.parent = parent end
+function date(format, value) return "Oct 31, 21:04" end
 function methods:SetJustifyH() end
 function methods:SetAutoFocus() end
 function methods:SetScript(event, script) self.scripts[event] = script end
@@ -119,8 +123,8 @@ for _, f in ipairs(frames) do
     end
 end
 assert(retryCount == 2 and retries == 2)
-assert(find("failed: ||Hbad||hBAD||h"))
-assert(find("||cffFF0000Raid||r"))
+assert(find("Failed - 0 instances: ||Hbad||hBAD||h"))
+assert(find("1. ||cffFF0000Raid||r"))
 click(find("Copy"))
 assert(ChronicleSidekickCopyLink.text == "https://example.com/%7CcffABCDEF")
 assert(ChronicleSidekickCopyLink.focus and ChronicleSidekickCopyLink.highlight)
@@ -155,5 +159,33 @@ ChronicleSidekick:RefreshUI()
 local maximumFrames = table.getn(frames)
 ChronicleSidekick:RefreshUI()
 assert(table.getn(frames) == maximumFrames)
-assert(ChronicleSidekickHistory.child.height == 20 * 58, "history must be bounded")
+assert(ChronicleSidekickHistory.child.height == 20 * (38 + 7 + 6), "history must be bounded")
+-- Instances from a single log share one bordered group; other logs do not.
+ChronicleSidekick.status.requests = {
+    { id = "grouped", filename = "ChronicleUpload_grouped.txt", created = 10, state = "complete",
+      instances = {
+        { id = "a", name = "Ragefire Chasm", url = "https://example.com/a" },
+        { id = "b", name = "Ragefire Chasm", url = "https://example.com/b" },
+      } },
+    { id = "other", filename = "ChronicleUpload_other.txt", created = 9, state = "processing", message = "Analyzing",
+      instances = { { id = "c", name = "Molten Core", url = "https://example.com/c" } } },
+}
+ChronicleSidekick:RefreshUI()
+local firstGroup = find("1. Ragefire Chasm").parent.parent
+assert(firstGroup == find("2. Ragefire Chasm").parent.parent)
+assert(firstGroup ~= find("1. Molten Core").parent.parent)
+assert(firstGroup.backdrop and firstGroup.height == 38 + 2 * 36 + 7)
+assert(find("2 instances"))
+assert(find("Processing - 1 instance: Analyzing"))
+assert(find("|cffffd100Log - Oct 31, 21:04|r"))
+for _, f in ipairs(frames) do
+    if f:IsShown() and f.text then
+        assert(not string.find(f.text, "ChronicleUpload_", 1, true), "hide implementation filenames")
+        assert(f.text ~= "complete:", "completed links do not need a state label")
+    end
+end
+ChronicleSidekick.status.requests = {}
+ChronicleSidekick:RefreshUI()
+assert(not firstGroup:IsShown(), "empty history must hide old groups")
+assert(find("No uploads yet."))
 print("sidekick_ui_test: PASS (Lua " .. _VERSION .. ")")
