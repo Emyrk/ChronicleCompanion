@@ -106,7 +106,10 @@ failed requests can be retried without creating another archive.
 **Sidekick** toggle one shared right tray; clicking the active toggle or the tray
 minimize button collapses it. Selection is saved in SavedVariables. Sidekick
 shows connection state, recent log requests, retry actions, and copyable instance
-links. **Archive and upload...** asks for confirmation and opens Sidekick after
+links. A channel selector (Say/Yell/Guild/Party/Raid) and per-instance **Announce**
+button send the instance name and HTTPS URL via normal chat. Stock Vanilla chat
+does not make web URLs clickable; recipients need a URL-handling addon for that.
+Announcements require a user click; polling never sends chat. **Archive and upload...** asks for confirmation and opens Sidekick after
 queueing. Upload availability depends on a compatible live Sidekick status.
 
 Automated Lua 5.0.3 tests:

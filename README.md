@@ -58,7 +58,10 @@ The configuration window includes **Archive and upload...** and a collapsible
 archives the current log, starts a fresh log session, and queues the immutable
 archive for a compatible [Chronicle Sidekick](https://github.com/Emyrk/chronicle-sidekick).
 The tray shows request-level processing status, retries, and copyable links to
-all instances found in a log. A live, ready Sidekick is required for the button.
+all instances found in a log. Select Say, Yell, Guild, Party, or Raid in the tray,
+then use **Announce** on an instance to share its name and URL. Stock Vanilla chat
+does not make web URLs clickable; recipients need a URL-handling addon for that.
+A live, ready Sidekick is required for the upload button.
 
 This repository implements the addon half; Sidekick must implement the matching
 [file protocol](SIDEKICK_PROTOCOL.md) before end-to-end uploads work.

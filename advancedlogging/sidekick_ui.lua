@@ -3,6 +3,16 @@
 local UI = {}
 local MAX_REQUESTS = 20
 local ROW_HEIGHT = 58
+local CHANNELS = { "SAY", "YELL", "GUILD", "PARTY", "RAID" }
+local CHANNEL_NAMES = { "Say", "Yell", "Guild", "Party", "Raid" }
+local channelIndex = 1
+
+-- Chat cannot contain server-supplied hyperlink/color markup or control bytes.
+local function ChatText(value)
+    local text = string.gsub(tostring(value or ""), "[%c]", " ")
+    return string.gsub(text, "|", "")
+end
+
 
 -- Never interpret server-supplied text as WoW color, texture or hyperlink markup.
 local function Plain(value, limit)
@@ -16,6 +26,27 @@ local function CopyURL(value)
     local text = string.gsub(tostring(value or ""), "[%c]", "")
     return string.gsub(text, "|", "%%7C")
 end
+
+function UI:Announce(name, url)
+    local channel = CHANNELS[channelIndex]
+    if channel == "GUILD" and not IsInGuild() then
+        Chronicle:Print("Join a guild before announcing to Guild."); return
+    elseif channel == "RAID" and GetNumRaidMembers() == 0 then
+        Chronicle:Print("Join a raid before announcing to Raid."); return
+    elseif channel == "PARTY" and GetNumPartyMembers() == 0 then
+        Chronicle:Print("Join a party before announcing to Party."); return
+    end
+    local link = CopyURL(url)
+    if not string.find(link, "^https://[^%s]+$") then return end
+    local prefix = "[Chronicle] "
+    local available = 255 - string.len(prefix) - string.len(": ") - string.len(link)
+    if available < 1 then
+        Chronicle:Print("This link is too long to announce in chat. Use Copy instead."); return
+    end
+    local instance = string.sub(ChatText(name), 1, available)
+    SendChatMessage(prefix .. instance .. ": " .. link, channel)
+end
+
 
 local function Button(parent, label, width, click)
     local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -84,6 +115,12 @@ function UI:GetRow(index)
     end)
     row.action:SetHeight(18)
     row.action:SetPoint("TOPRIGHT", 0, 0)
+    row.share = Button(row, "Announce", 80, function()
+        if this.url then UI:Announce(this.instanceName, this.url) end
+    end)
+    row.share:SetHeight(18)
+    row.share:SetPoint("TOPRIGHT", -54, -22)
+    row.share:Hide()
     self.rows[index] = row
     return row
 end
@@ -129,6 +166,9 @@ function UI:History()
         row.title:SetWidth(request.state == "failed" and 190 or 244)
         row.title:SetText(Plain(request.filename or request.id, 90))
         row.detail:SetText(Plain(request.state or "pending", 32) .. ": " .. Plain(request.message, 180))
+        row.share:Hide()
+        row.action:ClearAllPoints()
+        row.action:SetPoint("TOPRIGHT", 0, 0)
         row.action.requestID = request.id
         row.action.url = nil
         row.action:SetText("Retry")
@@ -143,16 +183,21 @@ function UI:History()
             row = self:GetRow(count)
             row:ClearAllPoints()
             row:SetPoint("TOPLEFT", 0, -height)
-            row:SetHeight(24)
-            row.title:SetWidth(190)
+            row:SetHeight(46)
+            row.title:SetWidth(244)
             row.title:SetText(Plain(instance.name or instance.id or "Instance", 90))
             row.detail:SetText("")
+            row.action:ClearAllPoints()
+            row.action:SetPoint("TOPRIGHT", 0, -22)
             row.action.requestID = nil
             row.action.url = CopyURL(instance.url)
             row.action:SetText("Copy")
             if row.action.url ~= "" then row.action:Show() else row.action:Hide() end
+            row.share.url = row.action.url
+            row.share.instanceName = instance.name or instance.id or "Instance"
+            if row.share.url ~= "" then row.share:Show() else row.share:Hide() end
             row:Show()
-            height = height + 24
+            height = height + 46
         end
     end
     for i = count + 1, table.getn(self.rows) do self.rows[i]:Hide() end
@@ -225,6 +270,12 @@ function UI:Create(panel)
     local title = Label(side, 200, "GameFontNormal")
     title:SetPoint("TOPLEFT", 20, -18)
     title:SetText("Sidekick")
+    title:SetWidth(100)
+    self.channel = Button(side, "Channel: Say", 125, function()
+        channelIndex = math.mod(channelIndex, table.getn(CHANNELS)) + 1
+        this:SetText("Channel: " .. CHANNEL_NAMES[channelIndex])
+    end)
+    self.channel:SetPoint("TOPLEFT", 130, -15)
     self.minimize = Button(panel, "-", 24, function() UI:Toggle(UI:Selected()) end)
     self.minimize:SetPoint("TOPLEFT", panel, "TOPRIGHT", 193, -12)
     self.readiness = Label(side, 260)

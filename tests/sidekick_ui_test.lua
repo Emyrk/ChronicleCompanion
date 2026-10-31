@@ -37,6 +37,16 @@ StaticPopupDialogs = {}
 local popup
 function StaticPopup_Show(name) popup = name end
 local polls, uploads, retries = 0, 0, 0
+local announcements, errors = {}, {}
+local guild, party, raid = false, 0, 0
+Chronicle = { Print = function(self, message) table.insert(errors, message) end }
+IsInGuild = function() return guild end
+GetNumPartyMembers = function() return party end
+GetNumRaidMembers = function() return raid end
+SendChatMessage = function(message, channel)
+    assert(string.len(message) <= 255)
+    table.insert(announcements, { message = message, channel = channel })
+end
 ChronicleCompanionDB = {}
 ChronicleUrsol = {}
 ChronicleLog = {}
@@ -57,7 +67,7 @@ function ChronicleSidekick:ArchiveAndUpload() uploads = uploads + 1 end
 function ChronicleSidekick:Retry(id) retries = retries + 1; self.lastRetry = id end
 assert(loadfile("advancedlogging/sidekick_ui.lua"))()
 local function find(text)
-    for _, f in ipairs(frames) do if f.text == text then return f end end
+    for _, f in ipairs(frames) do if f.text == text and f:IsShown() then return f end end
     error("Missing UI text: " .. text)
 end
 local function click(button)
@@ -114,6 +124,26 @@ assert(find("||cffFF0000Raid||r"))
 click(find("Copy"))
 assert(ChronicleSidekickCopyLink.text == "https://example.com/%7CcffABCDEF")
 assert(ChronicleSidekickCopyLink.focus and ChronicleSidekickCopyLink.highlight)
+click(find("Announce"))
+assert(announcements[1].channel == "SAY")
+assert(announcements[1].message == "[Chronicle] cffFF0000Raidr: https://example.com/%7CcffABCDEF")
+click(find("Channel: Say")); click(find("Announce"))
+assert(announcements[2].channel == "YELL")
+click(find("Channel: Yell")); click(find("Announce"))
+assert(table.getn(announcements) == 2 and table.getn(errors) == 1, "guild requires membership")
+guild = true; click(find("Announce")); assert(announcements[3].channel == "GUILD")
+click(find("Channel: Guild")); click(find("Announce"))
+assert(table.getn(announcements) == 3, "party requires membership")
+party = 1; click(find("Announce")); assert(announcements[4].channel == "PARTY")
+click(find("Channel: Party")); click(find("Announce"))
+assert(table.getn(announcements) == 4, "raid requires membership")
+raid = 1; click(find("Announce")); assert(announcements[5].channel == "RAID")
+click(find("Channel: Raid")); assert(find("Channel: Say"))
+local share = find("Announce")
+local originalURL = share.url
+share.url = "https://example.com/" .. string.rep("x", 255)
+click(share); assert(table.getn(announcements) == 5, "oversized URLs must not be truncated")
+share.url = originalURL
 for i = 1, 5 do ChronicleSidekick:RefreshUI() end
 assert(table.getn(frames) == firstFrameCount, "refresh must reuse rows/callbacks")
 ChronicleSidekick.status.requests = {}
