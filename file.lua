@@ -17,8 +17,8 @@ function ChronicleFile:AppendToFile(filename, content)
         return false, "WriteCustomFile not available (requires Nampower)"
     end
     local ok, err = pcall(WriteCustomFile, filename, content, "a")
-    if not ok then
-        return false, err
+    if not ok or err == false then
+        return false, (not ok and err) or "WriteCustomFile returned false"
     end
     return true
 end
@@ -48,8 +48,8 @@ function ChronicleFile:WriteFile(filename, content)
         return false, "WriteCustomFile not available (requires Nampower)"
     end
     local ok, err = pcall(WriteCustomFile, filename, content, "w")
-    if not ok then
-        return false, err
+    if not ok or err == false then
+        return false, (not ok and err) or "WriteCustomFile returned false"
     end
     return true
 end

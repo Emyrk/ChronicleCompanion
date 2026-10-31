@@ -565,6 +565,19 @@ end
 -- Log Management Functions
 -- =============================================================================
 
+-- Shared boundary for Delete, Archive, and Sidekick upload. No disk I/O here.
+function ChronicleLog:ResetLogSession()
+    self.pendingFlush = nil
+    self:ClearBuffer()
+    self:PurgeUnits()
+    self:PurgeTalentCache()
+    self:ResetRaidGroupCapture()
+    self:ScheduleRaidGroupCapture(0, "LOG_RESET", true)
+    if ChronicleUrsol then ChronicleUrsol:Reset() end
+    ChronicleCompanionCharDB.lastInstanceIds = {}
+    self:WriteZoneInfo(true)
+end
+
 --- Archives current logs to a backup file with the given suffix, then clears logs.
 --- @param suffix string - suffix for the backup filename (e.g. "backup" or a user-entered label)
 function ChronicleLog:ArchiveLogs(suffix)
@@ -584,11 +597,7 @@ function ChronicleLog:ArchiveLogs(suffix)
 
     ChronicleFile:WriteFile(newFile, existing .. bufferContent)
     ChronicleFile:WriteFile(currentFile, "")
-    self:ClearBuffer()
-    self:PurgeUnits()
-    self:PurgeTalentCache()
-    ChronicleCompanionCharDB.lastInstanceIds = {}
-    self:WriteZoneInfo(true)
+    self:ResetLogSession()
     Chronicle:Print("Archived logs to: " .. newFile)
     self:RefreshOptionsPanel()
     return newFile
@@ -599,11 +608,7 @@ function ChronicleLog:DeleteLogs()
     self.pendingFlush = nil
     local filename = self:GetLogFilename()
     ChronicleFile:WriteFile(filename, "")
-    self:ClearBuffer()
-    self:PurgeUnits()
-    self:PurgeTalentCache()
-    ChronicleCompanionCharDB.lastInstanceIds = {}
-    self:WriteZoneInfo(true)
+    self:ResetLogSession()
     Chronicle:Print("Deleted all logs: " .. filename)
     self:RefreshOptionsPanel()
 end

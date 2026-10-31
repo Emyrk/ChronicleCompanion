@@ -51,6 +51,18 @@ Type `/chron save` to save the logs to disk.
 
 Upload `<VanillaWoWFolder>/CustomData/Chronicle_<character_name>.txt` to **[ChronicleClassic.com](https://chronicleclassic.com/?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_id=chronicle_companion&utm_content=upload_instructions)**.
 
+### Chronicle Sidekick (addon integration)
+
+The configuration window includes **Archive and upload...** and a collapsible
+**Sidekick** status tray, sharing the right side with **Extra Events**. Uploading
+archives the current log, starts a fresh log session, and queues the immutable
+archive for a compatible [Chronicle Sidekick](https://github.com/Emyrk/chronicle-sidekick).
+The tray shows request-level processing status, retries, and copyable links to
+all instances found in a log. A live, ready Sidekick is required for the button.
+
+This repository implements the addon half; Sidekick must implement the matching
+[file protocol](SIDEKICK_PROTOCOL.md) before end-to-end uploads work.
+
 ### Slash Commands
 
 | Command             | Description                 |
@@ -84,6 +96,8 @@ tools/install_lua_5_0_3.sh .cache/lua-5.0.3
 .cache/lua-5.0.3/bin/lua tests/ursol_client_test.lua
 .cache/lua-5.0.3/bin/lua tests/write_correctness_test.lua
 .cache/lua-5.0.3/bin/lua tests/talent_invalidation_test.lua
+.cache/lua-5.0.3/bin/lua tests/sidekick_test.lua
+.cache/lua-5.0.3/bin/lua tests/sidekick_ui_test.lua
 ```
 
 ## License
