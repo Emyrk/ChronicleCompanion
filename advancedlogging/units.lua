@@ -307,6 +307,8 @@ end
 --- Call this on zone changes or other reset events.
 function ChronicleLog:PurgeUnits()
     self.units.logged = {}
+    pendingTransmog = {}
+    pendingTransmogTime = {}
 end
 
 --- Removes stale units from the logged database.

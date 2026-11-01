@@ -353,6 +353,7 @@ function ChronicleLog:CreateOptionsPanel()
     getglobal(defaultRangeSlider:GetName() .. "High"):SetText("200")
     getglobal(defaultRangeSlider:GetName() .. "Text"):SetText("Default: 40")
     defaultRangeSlider:SetScript("OnValueChanged", function()
+        if ChronicleLog.refreshingRangeSliders then return end
         local value = math.floor(this:GetValue())
         ChronicleLog:SetSetting("rangeDefault", value)
         getglobal(this:GetName() .. "Text"):SetText("Default: " .. value)
@@ -371,6 +372,7 @@ function ChronicleLog:CreateOptionsPanel()
     getglobal(dungeonRangeSlider:GetName() .. "High"):SetText("200")
     getglobal(dungeonRangeSlider:GetName() .. "Text"):SetText("Dungeon: 100")
     dungeonRangeSlider:SetScript("OnValueChanged", function()
+        if ChronicleLog.refreshingRangeSliders then return end
         local value = math.floor(this:GetValue())
         ChronicleLog:SetSetting("rangeDungeon", value)
         getglobal(this:GetName() .. "Text"):SetText("Dungeon: " .. value)
@@ -389,6 +391,7 @@ function ChronicleLog:CreateOptionsPanel()
     getglobal(raidRangeSlider:GetName() .. "High"):SetText("200")
     getglobal(raidRangeSlider:GetName() .. "Text"):SetText("Raid: 150")
     raidRangeSlider:SetScript("OnValueChanged", function()
+        if ChronicleLog.refreshingRangeSliders then return end
         local value = math.floor(this:GetValue())
         ChronicleLog:SetSetting("rangeRaid", value)
         getglobal(this:GetName() .. "Text"):SetText("Raid: " .. value)
@@ -565,6 +568,19 @@ end
 -- Log Management Functions
 -- =============================================================================
 
+-- Shared boundary for Delete, Archive, and Sidekick upload. No disk I/O here.
+function ChronicleLog:ResetLogSession()
+    self.pendingFlush = nil
+    self:ClearBuffer()
+    self:PurgeUnits()
+    self:PurgeTalentCache()
+    self:ResetRaidGroupCapture()
+    self:ScheduleRaidGroupCapture(0, "LOG_RESET", true)
+    if ChronicleUrsol then ChronicleUrsol:Reset() end
+    ChronicleCompanionCharDB.lastInstanceIds = {}
+    self:WriteZoneInfo(true)
+end
+
 --- Archives current logs to a backup file with the given suffix, then clears logs.
 --- @param suffix string - suffix for the backup filename (e.g. "backup" or a user-entered label)
 function ChronicleLog:ArchiveLogs(suffix)
@@ -584,11 +600,7 @@ function ChronicleLog:ArchiveLogs(suffix)
 
     ChronicleFile:WriteFile(newFile, existing .. bufferContent)
     ChronicleFile:WriteFile(currentFile, "")
-    self:ClearBuffer()
-    self:PurgeUnits()
-    self:PurgeTalentCache()
-    ChronicleCompanionCharDB.lastInstanceIds = {}
-    self:WriteZoneInfo(true)
+    self:ResetLogSession()
     Chronicle:Print("Archived logs to: " .. newFile)
     self:RefreshOptionsPanel()
     return newFile
@@ -599,11 +611,7 @@ function ChronicleLog:DeleteLogs()
     self.pendingFlush = nil
     local filename = self:GetLogFilename()
     ChronicleFile:WriteFile(filename, "")
-    self:ClearBuffer()
-    self:PurgeUnits()
-    self:PurgeTalentCache()
-    ChronicleCompanionCharDB.lastInstanceIds = {}
-    self:WriteZoneInfo(true)
+    self:ResetLogSession()
     Chronicle:Print("Deleted all logs: " .. filename)
     self:RefreshOptionsPanel()
 end
@@ -722,9 +730,16 @@ function ChronicleLog:RefreshOptionsPanel()
         panel.reminderDesc:SetText("(disabled when auto-enable is on)")
     end
     
+    -- Native SetValue can fire OnValueChanged during a programmatic refresh.
+    -- Do not let those callbacks recursively refresh the entire options window.
+    self.refreshingRangeSliders = true
     panel.defaultRangeSlider:SetValue(self:GetSetting("rangeDefault"))
     panel.dungeonRangeSlider:SetValue(self:GetSetting("rangeDungeon"))
     panel.raidRangeSlider:SetValue(self:GetSetting("rangeRaid"))
+    self.refreshingRangeSliders = nil
+    getglobal(panel.defaultRangeSlider:GetName() .. "Text"):SetText("Default: " .. self:GetSetting("rangeDefault"))
+    getglobal(panel.dungeonRangeSlider:GetName() .. "Text"):SetText("Dungeon: " .. self:GetSetting("rangeDungeon"))
+    getglobal(panel.raidRangeSlider:GetName() .. "Text"):SetText("Raid: " .. self:GetSetting("rangeRaid"))
     
     local chatFrameIndex = self:GetSetting("debugChatFrame")
     UIDropDownMenu_SetSelectedValue(panel.debugChatDropdown, chatFrameIndex)

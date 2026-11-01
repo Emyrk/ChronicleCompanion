@@ -155,19 +155,21 @@ assertEqual(archivedFile, "Chronicle_Recorder_mc_1234567890.txt", "archive filen
 assertEqual(ChronicleLog:GetCachedTalents("Alice"), "", "archive should clear cached talents")
 assertEqual(purgeUnitsCount, 1, "archive should purge logged units")
 assertEqual(zoneWriteCount, 1, "archive should write fresh zone info")
+assertEqual(raidCaptureCount, 1, "archive should schedule a fresh raid snapshot")
 assertEqual(table.getn(fileWrites), 2, "archive should write backup and clear current file")
 requestInspection(2, "archive should make the player immediately eligible for reinspection")
 completeInspection()
 
 ChronicleLog:DeleteLogs()
 assertEqual(ChronicleLog:GetCachedTalents("Alice"), "", "delete should clear cached talents")
+assertEqual(raidCaptureCount, 2, "delete should schedule a fresh raid snapshot")
 requestInspection(3, "delete should make the player immediately eligible for reinspection")
 completeInspection()
 
 ChronicleLog:ZONE_CHANGED_NEW_AREA()
 assertEqual(ChronicleLog:GetCachedTalents("Alice"), "", "enabled zone change should clear cached talents")
 assertEqual(purgeUnitsCount, 3, "archive, delete, and zone change should each purge logged units")
-assertEqual(raidCaptureCount, 1, "raid zone change should schedule a fresh raid snapshot")
+assertEqual(raidCaptureCount, 3, "archive, delete, and zone change should schedule fresh raid snapshots")
 requestInspection(4, "zone change should make the player immediately eligible for reinspection")
 
 print("talent invalidation tests passed")
