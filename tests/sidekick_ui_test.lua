@@ -188,4 +188,33 @@ ChronicleSidekick.status.requests = {}
 ChronicleSidekick:RefreshUI()
 assert(not firstGroup:IsShown(), "empty history must hide old groups")
 assert(find("No uploads yet."))
+-- Slash shortcut uses the same dialog, without opening settings or uploading.
+cgmatch = string.gfind
+dofile("slash.lua")
+ChronicleLog.optionsPanel:Hide()
+ChronicleSidekick.ready = true
+popup = nil
+local uploadsBefore = uploads
+Chronicle:HandleSlashCommand("upload")
+assert(popup == "CHRONICLE_SIDEKICK_UPLOAD_CONFIRM")
+assert(uploads == uploadsBefore and not ChronicleLog.optionsPanel:IsShown())
+StaticPopupDialogs[popup].OnAccept()
+assert(uploads == uploadsBefore + 1)
+ChronicleSidekick.ready = false
+popup = nil
+local errorsBefore = table.getn(errors)
+Chronicle:HandleSlashCommand("upload")
+assert(popup == nil and uploads == uploadsBefore + 1)
+assert(table.getn(errors) == errorsBefore + 1, "unavailable Sidekick should explain why")
+ChronicleSidekick.ready = true
+Chronicle:HandleSlashCommand("upload")
+ChronicleSidekick.ready = false
+StaticPopupDialogs[popup].OnAccept()
+assert(uploads == uploadsBefore + 1, "readiness is rechecked at confirmation")
+Chronicle:ShowHelp()
+local foundUploadHelp = false
+for _, message in ipairs(errors) do
+    if string.find(message, "/chronicle upload", 1, true) then foundUploadHelp = true end
+end
+assert(foundUploadHelp)
 print("sidekick_ui_test: PASS (Lua " .. _VERSION .. ")")

@@ -270,6 +270,18 @@ function UI:Refresh()
     self:History()
 end
 
+-- Shared entry point for the button and slash command; never uploads directly.
+function ChronicleSidekick:ConfirmUpload()
+    self:Poll()
+    local ready, reason = self:Ready()
+    if not ready then
+        Chronicle:Print(reason)
+        return false
+    end
+    StaticPopup_Show("CHRONICLE_SIDEKICK_UPLOAD_CONFIRM")
+    return true
+end
+
 StaticPopupDialogs["CHRONICLE_SIDEKICK_UPLOAD_CONFIRM"] = {
     text = "Archive the current combat log and queue it for upload by Sidekick?\n\nThis clears the active log after archiving it locally. Sidekick will send the archive to the configured server.",
     button1 = "Archive & Upload",
@@ -294,9 +306,7 @@ function UI:Create(panel)
         ChronicleUrsol.options:SetHeight(panel:GetHeight())
     end
     self.upload = Button(panel, "Archive & Upload...", 172, function()
-        ChronicleSidekick:Poll()
-        local ready = ChronicleSidekick:Ready()
-        if ready then StaticPopup_Show("CHRONICLE_SIDEKICK_UPLOAD_CONFIRM") end
+        ChronicleSidekick:ConfirmUpload()
         UI:Refresh()
     end)
     self.upload:SetPoint("BOTTOMLEFT", 20, 18)

@@ -59,8 +59,10 @@ archives the current log, starts a fresh log session, and queues the immutable
 archive for a compatible [Chronicle Sidekick](https://github.com/Emyrk/chronicle-sidekick).
 The tray shows request-level processing status, retries, and copyable links to
 all instances found in a log. Select Say, Yell, Guild, Party, or Raid in the tray,
-then use **Announce** on an instance to share its name and URL. Stock Vanilla chat
-does not make web URLs clickable; recipients need a URL-handling addon for that.
+then use **Announce** on an instance to share its name and URL.
+Stock Vanilla chat does not make web URLs clickable; recipients need a URL-handling
+addon for that. Use `/chronicle upload` to open the upload confirmation without
+opening settings.
 A live, ready Sidekick is required for the upload button.
 
 This addon uses [Chronicle local RPC v1](SIDEKICK_PROTOCOL.md):
@@ -79,6 +81,7 @@ not implemented v1 features.
 | `/chronicle config` | Open the options panel      |
 | `/chron delete`     | Delete existing logs        |
 | `/chron save`       | Save logs to disk           |
+| `/chronicle upload` | Confirm archive and upload via Sidekick |
 
 You can also use `/chron` as a shorthand for `/chronicle`.
 

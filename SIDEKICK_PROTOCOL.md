@@ -415,6 +415,8 @@ Sidekick-written SQLite cache for larger queryable results.
   instance counts instead of raw archive filenames. Completed logs with links do
   not show a redundant complete label; pending/error states stay visible. Instance
   rows have Copy and explicit Announce actions (Say/Yell/Guild/Party/Raid).
+  `/chronicle upload` opens the same confirmation as the upload button without
+  opening settings; both paths check readiness and require confirmation.
   Announcements include instance name and URL. No polling sends chat or retries.
 
 ### Verification and remaining integration checks
