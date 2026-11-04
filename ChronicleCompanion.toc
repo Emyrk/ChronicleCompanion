@@ -19,6 +19,8 @@ advancedlogging\combatant.lua
 advancedlogging\talents.lua
 advancedlogging\config.lua
 advancedlogging\ursol.lua
+sidekick.lua
+advancedlogging\sidekick_ui.lua
 
 core.lua
 debug.lua

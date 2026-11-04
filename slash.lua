@@ -88,6 +88,8 @@ function Chronicle:HandleSlashCommand(msg)
 		else
 			self:Print("No lines to save.")
 		end
+	elseif cmd == "upload" then
+		ChronicleSidekick:ConfirmUpload()
 	elseif cmd == "delete" then
 		StaticPopup_Show("CHRONICLELOG_CLEAR_CONFIRM")
 	elseif cmd == "ids" then
@@ -143,6 +145,7 @@ function Chronicle:ShowHelp()
 	self:Print("=== Chronicle Commands ===")
 	self:Print("/chronicle log [1|0|true|false] - Toggle or set logging on/off")
 	self:Print("/chronicle save - Save logs to disk")
+	self:Print("/chronicle upload - Confirm archive and upload via Sidekick")
 	self:Print("/chronicle delete - Delete all logs (disk and memory)")
 	self:Print("/chronicle version - Show addon version")
 	self:Print("/chronicle config - Open options panel")

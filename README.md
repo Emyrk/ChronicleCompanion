@@ -51,6 +51,28 @@ Type `/chron save` to save the logs to disk.
 
 Upload `<VanillaWoWFolder>/CustomData/Chronicle_<character_name>.txt` to **[ChronicleClassic.com](https://chronicleclassic.com/?utm_source=github&utm_medium=referral&utm_campaign=readme&utm_id=chronicle_companion&utm_content=upload_instructions)**.
 
+### Chronicle Sidekick (addon integration)
+
+The configuration window includes **Archive and upload...** and a collapsible
+**Sidekick** status tray, sharing the right side with **Extra Events**. Uploading
+archives the current log, starts a fresh log session, and queues the immutable
+archive for a compatible [Chronicle Sidekick](https://github.com/Emyrk/chronicle-sidekick).
+The tray shows request-level processing status, retries, and copyable links to
+all instances found in a log. Select Say, Yell, Guild, Party, or Raid in the tray,
+then use **Announce** on an instance to share its name and URL.
+Stock Vanilla chat does not make web URLs clickable; recipients need a URL-handling
+addon for that. Use `/chronicle upload` to open the upload confirmation without
+opening settings.
+A live, ready Sidekick is required for the upload button.
+
+This addon uses [Chronicle local RPC v1](SIDEKICK_PROTOCOL.md):
+`ChronicleRPC.requests`, `ChronicleRPC.status`, and `combat_log.upload`. A Sidekick
+build implementing that contract is required; the earlier `ChronicleSidekick.*`
+wire format is not supported. Sidekick owns managed archive retention and can
+retry either upload or Chronicle processing without a new log boundary. Future
+RPC/cache ideas are tracked in [Sidekick #32](https://github.com/Emyrk/chronicle-sidekick/issues/32),
+not implemented v1 features.
+
 ### Slash Commands
 
 | Command             | Description                 |
@@ -59,6 +81,7 @@ Upload `<VanillaWoWFolder>/CustomData/Chronicle_<character_name>.txt` to **[Chro
 | `/chronicle config` | Open the options panel      |
 | `/chron delete`     | Delete existing logs        |
 | `/chron save`       | Save logs to disk           |
+| `/chronicle upload` | Confirm archive and upload via Sidekick |
 
 You can also use `/chron` as a shorthand for `/chronicle`.
 
@@ -84,6 +107,9 @@ tools/install_lua_5_0_3.sh .cache/lua-5.0.3
 .cache/lua-5.0.3/bin/lua tests/ursol_client_test.lua
 .cache/lua-5.0.3/bin/lua tests/write_correctness_test.lua
 .cache/lua-5.0.3/bin/lua tests/talent_invalidation_test.lua
+.cache/lua-5.0.3/bin/lua tests/sidekick_test.lua
+.cache/lua-5.0.3/bin/lua tests/sidekick_ui_test.lua
+.cache/lua-5.0.3/bin/lua tests/options_refresh_test.lua
 ```
 
 ## License
