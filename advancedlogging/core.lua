@@ -28,7 +28,47 @@ ChronicleLog.isTurtleWow = Chronicle_IsUrsolClient()
 local LOG_SEP = "|"
 
 -- PERF: lines written per frame by a deferred combat-end save
-local FLUSH_CHUNK_LINES = 1000
+local FLUSH_CHUNK_LINES = 200
+
+-- PERF: block writer.
+-- table.concat builds its result through luaL_Buffer, which in Lua 5.0 (512
+-- byte buffer on Windows) merges partial strings again and again: joining a
+-- 1000-line chunk produced ~5.7 times its size in garbage. A single `..`
+-- expression instead allocates its result once, so the lines are written in
+-- blocks of FLUSH_BLOCK_LINES joined by a generated `t[i] .. "\n" .. t[i+1] ..`
+-- function (one string per block, each line followed by "\n").
+local FLUSH_BLOCK_LINES = 50
+local blockWriters = {}
+local function GetBlockWriter(count)
+    local fn = blockWriters[count]
+    if not fn then
+        local parts = {}
+        for k = 0, count - 1 do
+            parts[k + 1] = "t[i+" .. k .. "]"
+        end
+        fn = loadstring("return function(t, i) return " .. table.concat(parts, ' .. "\\n" .. ') .. ' .. "\\n" end')()
+        blockWriters[count] = fn
+    end
+    return fn
+end
+
+-- joins `count` block strings (no separator), used to write fewer, larger
+-- pieces when a save has to finish at once (loading screen, logout...)
+local blockJoiners = {}
+local function GetBlockJoiner(count)
+    local fn = blockJoiners[count]
+    if not fn then
+        local parts = {}
+        for k = 1, count do
+            parts[k] = "t[" .. k .. "]"
+        end
+        fn = loadstring("return function(t) return " .. table.concat(parts, " .. ") .. " end")()
+        blockJoiners[count] = fn
+    end
+    return fn
+end
+local FINISH_JOIN_BLOCKS = 20
+local joinScratch = {}
 
 local RAID_GROUP_DEBOUNCE_DELAY = 0.25
 local RAID_GROUP_RETRY_DELAY = 0.25
@@ -494,45 +534,60 @@ function ChronicleLog:FlushToFile(deferred)
     local written = self.bufferSize
     local ok, err = ChronicleFile:AppendToFile(filename, header .. "\n")
     if ok then
-        if deferred then
-            self.pendingFlush = { lines = self.buffer, n = written, pos = 1, filename = filename }
-            self.buffer = {}
-            self.bufferSize = 0
-        else
-            -- an empty last element gives the trailing newline without a copy
-            self.buffer[written + 1] = ""
-            ok, err = ChronicleFile:AppendToFile(filename, table.concat(self.buffer, "\n", 1, written + 1))
+        -- the lines always go through the block writer; a non-deferred save
+        -- just finishes it right away
+        self.pendingFlush = { lines = self.buffer, n = written, pos = 1, filename = filename }
+        self.buffer = {}
+        self.bufferSize = 0
+        if not deferred then
+            self:FinishPendingFlush()
         end
     end
     if ok then
         Chronicle:DebugPrint("Appended " .. written .. " lines to " .. filename)
     else
         Chronicle:Print("Failed to write: " .. (err or "unknown error"))
-    end
-    
-    if not self.pendingFlush or not deferred then
         self:ClearBuffer()
     end
     return written
 end
 
---- Appends up to `maxLines` lines of the pending (deferred) save.
-function ChronicleLog:DrainPendingFlush(maxLines)
+--- Appends up to `maxLines` lines of the pending (deferred) save, one write
+--- per block of FLUSH_BLOCK_LINES lines (or, with `join`, one write per
+--- FINISH_JOIN_BLOCKS blocks).
+function ChronicleLog:DrainPendingFlush(maxLines, join)
     local p = self.pendingFlush
     if not p then return end
-    local last = p.pos + maxLines - 1
-    if last >= p.n then
-        -- last chunk: an empty extra element gives the trailing newline
-        last = p.n
-        p.lines[last + 1] = ""
-        last = last + 1
+    local lines, pos = p.lines, p.pos
+    local stop = pos + maxLines - 1
+    if stop > p.n then stop = p.n end
+    local ok, err = true, nil
+    local nj = 0
+    while pos <= stop do
+        local count = stop - pos + 1
+        if count > FLUSH_BLOCK_LINES then count = FLUSH_BLOCK_LINES end
+        local block = GetBlockWriter(count)(lines, pos)
+        pos = pos + count
+        if join then
+            nj = nj + 1
+            joinScratch[nj] = block
+            if nj == FINISH_JOIN_BLOCKS or pos > stop then
+                block = GetBlockJoiner(nj)(joinScratch)
+                for k = 1, nj do joinScratch[k] = nil end
+                nj = 0
+            else
+                block = nil
+            end
+        end
+        if block then
+            local wok, werr = ChronicleFile:AppendToFile(p.filename, block)
+            if not wok and ok then ok, err = false, werr end
+        end
     end
-    local ok, err = ChronicleFile:AppendToFile(p.filename, table.concat(p.lines, "\n", p.pos, last)
-        .. (last > p.n and "" or "\n"))
     if not ok then
         Chronicle:Print("Failed to write: " .. (err or "unknown error"))
     end
-    p.pos = last + 1
+    p.pos = pos
     if p.pos > p.n then
         self.pendingFlush = nil
     end
@@ -541,7 +596,7 @@ end
 --- Writes what is left of a pending (deferred) save right away.
 function ChronicleLog:FinishPendingFlush()
     while self.pendingFlush do
-        self:DrainPendingFlush(1000000)
+        self:DrainPendingFlush(1000000, true)
     end
 end
 
