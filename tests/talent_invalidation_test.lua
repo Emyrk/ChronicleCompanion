@@ -27,6 +27,11 @@ time = function()
     return 1234567890
 end
 
+-- WoW global (os.date): used to date the per-instance log file names
+date = function(format, t)
+    return os.date(format, t)
+end
+
 UnitName = function(unit)
     if unit == "player" then return "Recorder" end
     if unit == "raid1" then return "Alice" end
