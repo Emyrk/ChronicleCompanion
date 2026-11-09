@@ -74,9 +74,10 @@ local DEFAULTS = {
     positionMinMove = 0.5,
     marks = true,
     threat = true,
-    threatQuery = "auto",   -- "auto": only if TWThreat / pfUI-ThreatPlates are not loaded, "on", "off"
+    threatQuery = "on",     -- "on": always ask the server, "auto": only if TWThreat / pfUI-ThreatPlates
+                            -- are not loaded, "off": only listen
     threatInterval = 1.0,
-    threatLimit = 10,
+    threatLimit = 40,       -- whole raid: the bottom of the threat table is logged too
 }
 
 function Ursol:Get(key)
@@ -802,7 +803,7 @@ function Ursol:QueryThreat()
     if not channel then return end
     if not SendAddonMessage then return end
     if not UnitExists("target") or UnitIsPlayer("target") or not UnitCanAttack("player", "target") then return end
-    SendAddonMessage(UDTS_TM, "limit=" .. (tonumber(self:Get("threatLimit")) or 10), channel)
+    SendAddonMessage(UDTS_TM, "limit=" .. (tonumber(self:Get("threatLimit")) or 40), channel)
     if not self.threatServer then
         self.threatUnanswered = self.threatUnanswered + 1
     end
