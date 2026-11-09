@@ -149,7 +149,9 @@ rounded to 1 decimal).
 
 The options panel (`/clog` or `/chronicle config`) has an **Extra events**
 side panel on its right: one checkbox per line type (the Positions line shows
-which API gives them) and the threat request mode (auto / on / off). The
+which API gives them) and an **Ask the server** checkbox under Threat
+(checked = `threatQuery on`, unchecked = `auto`; `off` is set with the slash
+command). The
 ClassicAPI and SuperWoW versions are listed under **Version Info** in the main
 panel, next to Nampower. Intervals are only in the slash
 command: `/chronicle ursol` lists the settings, `/chronicle ursol <setting>
@@ -165,6 +167,10 @@ command: `/chronicle ursol` lists the settings, `/chronicle ursol <setting>
 | threatQuery | auto | `auto`: ask the server only if TWThreat and pfUI-ThreatPlates are absent, and stop after 10 requests without any answer (server without the threat API; an answer, even relayed by the group, turns them back on); `on`: always ask; `off`: only listen |
 | threatInterval | 1 | seconds between threat requests |
 | threatLimit | 10 | players per threat table requested |
+
+Threat requests stop after 10 without any answer in `on` mode as well as in
+`auto` (a server without the threat API is not asked every second); an
+answer, even relayed by the group, turns them back on.
 
 ## Limits
 
