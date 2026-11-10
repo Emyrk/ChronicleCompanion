@@ -27,20 +27,21 @@ end
 function Chronicle:CreateEventFrame()
 	self.eventFrame = CreateFrame("Frame", "ChronicleEventFrame")
 	self.eventFrame:SetScript("OnEvent", function()
-		Chronicle:OnEvent(event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
+		Chronicle:OnEvent(event, arg1)
 	end)
 	
 	-- Register events
 	self.eventFrame:RegisterEvent("ADDON_LOADED")
 end
 
-function Chronicle:OnEvent(event, ...)
+function Chronicle:OnEvent(event, arg1)
 	if event == "ADDON_LOADED" then
-		local addonName = arg1
-		if addonName == "ChronicleCompanion" then
+		if arg1 == "ChronicleCompanion" then
 			self.chronicleCompanionLoaded = true
 			self:Init()
 			ChronicleMinimapButton:SetShown(ChronicleLog:GetSetting("showMinimapIcon") ~= false)
+			ChronicleMinimapButton:LoadPosition()
+			ChronicleMinimapButton:UpdateIcon()
 			self:Print("Chronicle v" .. GetAddOnMetadata("ChronicleCompanion", "Version") .. " loaded. Type /chronicle help for commands.")
 		end
 		-- local existing = LoggingCombat()
